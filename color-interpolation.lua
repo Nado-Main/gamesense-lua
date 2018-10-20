@@ -1,4 +1,4 @@
-local function setMath(int, max, declspec)
+local function g_Math(int, max, declspec)
 	local int = (int > max and max or int)
 
 	local tmp = max / int;
@@ -8,39 +8,39 @@ local function setMath(int, max, declspec)
 	return i
 end
 
-local function getColor(number, max)
-	local r, g, b
-	i = setMath(number, max, 9)
+local function g_ColorByInt(number, max)
+	local Colors = {
+		{ 124, 195, 13 },
+		{ 176, 205, 10 },
+		{ 213, 201, 19 },
+		{ 220, 169, 16 },
+		{ 228, 126, 10 },
+		{ 229, 104, 8 },
+		{ 235, 63, 6 },
+		{ 237, 27, 3 },
+		{ 255, 0, 0 }
+	}
 
-	if i <= 1 then r, g, b = 255, 0, 0
-		elseif i == 2 then r, g, b = 237, 27, 3
-		elseif i == 3 then r, g, b = 235, 63, 6
-		elseif i == 4 then r, g, b = 229, 104, 8
-		elseif i == 5 then r, g, b = 228, 126, 10
-		elseif i == 6 then r, g, b = 220, 169, 16
-		elseif i == 7 then r, g, b = 213, 201, 19
-		elseif i == 8 then r, g, b = 176, 205, 10
-		elseif i == 9 then r, g, b = 124, 195, 13
-	end
-
-	return r, g, b
+	i = g_Math(number, max, #Colors)
+	return
+		Colors[i <= 1 and 1 or i][1], 
+		Colors[i <= 1 and 1 or i][2],
+		Colors[i <= 1 and 1 or i][3]
 end
 
 --[[
+    Example usage:
 
-    Using:
+	local cl = {
+	    indicator = client.draw_indicator
+	}
 
-    local cl = {
-        indicator = client.draw_indicator
-    }
+	local function on_paint(c)
+	    local c_Latency = getPing() -- Some function
+	    local r, g, b = g_ColorByInt(c_Latency, 999) -- "999" Max number
 
-    local function on_paint(c)
-        local c_Latency = getPing() -- Some function
-        local r, g, b = getColor(c_Latency, 999)
+	    cl.indicator(c, r, g, b, 255, "PING") -- Shows your ping
+	end
 
-        cl.indicator(c, r, g, b, 255, "PING") -- Shows your ping
-    end
-
-    client.set_event_callback("paint", on_paint)
-
+	client.set_event_callback("paint", on_paint)
 ]]--
