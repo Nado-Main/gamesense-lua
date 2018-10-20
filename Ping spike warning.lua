@@ -88,7 +88,8 @@ client.set_event_callback("paint", function(c)
 			local r, g, b = g_ColorByInt(g_Num[i], 450)
 
 			if x_center ~= nil then
-				client.draw_text(c, x_center, y1 - 15 + y_additional, r, g, b, g_Num[i] > 75 and 255 or g_Num[i], "c-", 0, g_Num[i], " MS")
+				local d_number = (255 * a_multiplier)
+				client.draw_text(c, x_center, y1 - 15 + y_additional, r, g, b, g_Num[i] > 75 and d_number or g_Num[i], "c-", 0, g_Num[i], " MS")
 			end
 		end
 	end
