@@ -89,7 +89,7 @@ client.set_event_callback("paint", function(c)
 
 			if x_center ~= nil then
 				local d_number = (255 * a_multiplier)
-				client.draw_text(c, x_center, y1 - 15 + y_additional, r, g, b, g_Num[i] > 75 and d_number or g_Num[i], "c-", 0, g_Num[i], " MS")
+				client.draw_text(c, x_center, y1 - 15 + y_additional, r, g, b, a_multiplier == 1 and (g_Num[i] > 75 and 255 or g_Num[i]) or d_number, "c-", 0, g_Num[i], " MS")
 			end
 		end
 	end
