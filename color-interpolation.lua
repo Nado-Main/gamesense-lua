@@ -30,17 +30,10 @@ end
 
 --[[
     Example usage:
-
-	local cl = {
-	    indicator = client.draw_indicator
-	}
-
-	local function on_paint(c)
+	client.set_event_callback("paint", function(c)
 	    local c_Latency = getPing() -- Some function
 	    local r, g, b = g_ColorByInt(c_Latency, 999) -- "999" Max number
 
-	    cl.indicator(c, r, g, b, 255, "PING") -- Shows your ping
-	end
-
-	client.set_event_callback("paint", on_paint)
+	    client.draw_indicator(c, r, g, b, 255, "PING") -- Shows your ping
+	end)
 ]]--
