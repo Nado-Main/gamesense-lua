@@ -53,10 +53,25 @@ local function g_DormantPlayers(enemy_only, alive_only)
 	return result
 end
 
-local g_Num, g_Curtime = {}, {}
+local g_PlayerState = {}
+local function setPlayerState(entity, t, element)
+	if element then 
+		g_PlayerState[entity][element] = t
+	else 
+		g_PlayerState[entity] = t
+	end
+end
+
+local function setAlphaLimit(number)
+	local i = number
+	i = i >= 255 and 255 or i
+	i = i <= 0 and 0 or i
+	return i
+end
+
 client.set_event_callback("paint", function(c)
 	local g_Local = entity.get_local_player()
-	if not ui_get(ps_warning) or not g_Local then
+	if not ui_get(ps_warning) or not g_Local or not entity.is_alive(g_Local) then
 		return
 	end
 
@@ -65,31 +80,46 @@ client.set_event_callback("paint", function(c)
 
 	if #g_Players == 0 then return end
 	for i=1, #g_Players do
-		if not g_Num[i] or not g_Curtime[i] then
-			g_Num[i] = 0
-			g_Curtime[i] = 0
+
+		local latency = e_get_prop(g_CSPlayerResource, string.format("%03d", g_Players[i]))
+		local max_latency = (latency > 400 and 350 or latency)
+		local g_CurState = g_PlayerState[i]
+
+		if not g_CurState then
+			setPlayerState(i, { ["ping"] = latency, ["curtime"] = globals.realtime(), ["alpha"] = 0 })
+			g_CurState = g_PlayerState[i]
 		end
 
-		local g_iLatency = e_get_prop(g_CSPlayerResource, string.format("%03d", g_Players[i]))
-		local max_latency = (g_iLatency > 400 and 350 or g_iLatency)
+		if g_CurState.ping ~= latency and g_CurState.curtime < globals.realtime() then
+			d = g_CurState.ping > latency and -1 or 1
+			setPlayerState(i, globals.realtime() + 0.01, "curtime")
+			setPlayerState(i, g_CurState.ping + d, "ping")
+		end
 
-		if g_Num[i] ~= g_iLatency and g_Curtime[i] < globals.realtime() then
-			d = g_Num[i] > g_iLatency and -1 or 1
-			g_Curtime[i] = globals.realtime() + 0.01
-
-			g_Num[i] = g_Num[i] + d
+		if g_CurState.ping < 75 then
+			setPlayerState(i, setAlphaLimit(g_CurState.alpha - 1), "alpha")
+		else
+			setPlayerState(i, setAlphaLimit(g_CurState.alpha + 1), "alpha")
 		end
 
 		local name = entity.get_player_name(g_Players[i])
 		local y_additional = name == "" and -8 or 0
 		local x1, y1, x2, y2, a_multiplier = entity.get_bounding_box(c, g_Players[i])
-		if x1 ~= nil and a_multiplier > 0 then
+		if x1 ~= nil and entity.is_alive(g_Players[i]) and a_multiplier > 0 then
 			local x_center = x1 + (x2-x1)/2
-			local r, g, b = g_ColorByInt(g_Num[i], 450)
+			local r, g, b = g_ColorByInt(g_CurState.ping, 450)
 
 			if x_center ~= nil then
-				local d_number = (255 * a_multiplier)
-				client.draw_text(c, x_center, y1 - 15 + y_additional, r, g, b, a_multiplier == 1 and (g_Num[i] > 75 and 255 or g_Num[i]) or d_number, "c-", 0, g_Num[i], " MS")
+				local n, ping_state, alpha_state = 0, g_CurState.ping, g_CurState.alpha
+				local dormant_state = (a_multiplier * 255)
+
+				if dormant_state <= 150 and alpha_state > 150 then
+					n = dormant_state
+				elseif (ping_state > 75 and dormant_state > 75) or ping_state <= 75 then
+					n = alpha_state
+				end
+
+				client.draw_text(c, x_center, y1 - 15 + y_additional, r, g, b, n, "c-", 0, ping_state, " MS")
 			end
 		end
 	end
