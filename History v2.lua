@@ -138,8 +138,8 @@ client.set_event_callback("paint", function(c)
     local n = ui_get(Elements.table_size)
     local col_sz = 24 + (16 * (#aim_table > n and n or #aim_table))
 
-    draw_rectangle(c, x, y, 243, col_sz, 22, 20, 26, 100)
-    draw_rectangle(c, x, y, 243, 15, r, g, b, a)
+    draw_rectangle(c, x, y, 244, col_sz, 22, 20, 26, 100)
+    draw_rectangle(c, x, y, 244, 15, r, g, b, a)
 
     -- Drawing first column
     draw_text(c, x + 10, y + 8, 255, 255, 255, 255, "-c", 70, "ID")
