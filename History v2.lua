@@ -66,16 +66,15 @@ client.set_event_callback("aim_fire", function(m)
 
         local nick = entity.get_player_name(m.target)
         local ticks = math.floor((m.backtrack * tickrate) + 0.5)
-        g_LastBullet = {
-            ["id"] = m.id,
-            ["time"] = globals.curtime() + TicksTime(15)
-        }
 
-        aim_table[1] = { 
+        aim_table[1], g_LastBullet = { 
             ["id"] = m.id, ["hit"] = 0, 
             ["player"] = string.sub(nick, 0, 14),
             ["dmg"] = m.damage, ["bt"] = ticks, 
             ["lc"] = (m.teleported and "Breaking" or "No"), ["pri"] = (m.high_priority and "High" or "Normal")
+        }, {
+            ["id"] = m.id,
+            ["time"] = globals.curtime() + TicksTime(15)
         }
     end
 end)
