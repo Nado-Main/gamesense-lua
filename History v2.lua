@@ -3,6 +3,9 @@ local draw_text = client.draw_text
 local draw_rectangle = client.draw_rectangle
 local width, height = client.screen_size()
 
+local aim_table = {}
+local g_LastBullet = { ["id"] = 0, ["time"] = globals.realtime(), ["reg"] = false }
+
 local Elements = {
     is_active = ui.new_checkbox("MISC", "Settings", "Aim bot logging"),
     palette = ui.new_color_picker("MISC", "Settings", "Logging picker", 16, 22, 29, 160),
@@ -10,20 +13,40 @@ local Elements = {
     table_size = ui.new_slider("MISC", "Settings", "Maximum amount", 2, 10, 5),
     size_x = ui.new_slider("MISC", "Settings", "X Axis", 1, width, 90, true, "px"),
     size_y = ui.new_slider("MISC", "Settings", "Y Axis", 1, height, 400, true, "px"),
+
+    reset_table = ui.new_button("MISC", "Settings", "Reset table", function()
+        aim_table = {}
+    end)
 }
 
-local aim_table = {}
+local function TicksTime(tick)
+    return globals.tickinterval() * tick
+end
+
 local function hook_aim_event(status, m)
-    for n, _ in pairs(aim_table) do
-        if aim_table[n].id == m.id then
-            aim_table[n]["hit"] = status
+    if m.id ~= g_LastBullet.id then
+        return
+    end
+
+    if g_LastBullet["reg"] == true then
+        for n, _ in pairs(aim_table) do
+            if aim_table[n].id == m.id then
+                aim_table[n]["hit"] = status
+            end
         end
     end
 end
 
-client.set_event_callback("aim_hit", function(a) hook_aim_event("aim_hit", a) end)
-client.set_event_callback("aim_miss", function(a) hook_aim_event("aim_miss", a) end)
-client.set_event_callback("cs_game_disconnected", function() aim_table = { } end)
+client.set_event_callback("aim_hit", function(m) hook_aim_event("aim_hit", m) end)
+client.set_event_callback("aim_miss", function(m) hook_aim_event("aim_miss", m) end)
+
+client.set_event_callback("bullet_impact", function(m)
+    local g_Local = entity.get_local_player()
+    local g_EntID = client.userid_to_entindex(m.userid)
+    if g_Local == g_EntID and g_LastBullet["time"] > globals.realtime() then
+        g_LastBullet["reg"] = true
+    end
+end)
 
 client.set_event_callback("aim_fire", function(m)
     if ui_get(Elements.is_active) then
@@ -43,6 +66,10 @@ client.set_event_callback("aim_fire", function(m)
 
         local nick = entity.get_player_name(m.target)
         local ticks = math.floor((m.backtrack * tickrate) + 0.5)
+        g_LastBullet = {
+            ["id"] = m.id,
+            ["time"] = globals.realtime() + TicksTime(15)
+        }
 
         aim_table[1] = { 
             ["id"] = m.id, ["hit"] = 0, 
@@ -81,7 +108,7 @@ local function drawTable(c, count, x, y, data)
 end
 
 client.set_event_callback("paint", function(c)
-    if not ui_get(Elements.is_active) or not globals.mapname() then
+    if not ui_get(Elements.is_active) then
         return
     end
 
@@ -99,7 +126,7 @@ client.set_event_callback("paint", function(c)
     draw_text(c, x + 10 + 35, y + 8, 255, 255, 255, 255, "-c", 70, "PLAYER")
     draw_text(c, x + 10 + 114, y + 8, 255, 255, 255, 255, "-c", 70, "DMG")
     draw_text(c, x + 10 + 147, y + 8, 255, 255, 255, 255, "-c", 70, "BT")
-    draw_text(c, x + 10 + 190, y + 8, 255, 255, 255, 255, "-c", 70, "LC BREAK")
+    draw_text(c, x + 10 + 190, y + 8, 255, 255, 255, 255, "-c", 70, "LAG COMP")
     draw_text(c, x + 10 + 240, y + 8, 255, 255, 255, 255, "-c", 70, "PRIORITY")
 
     -- Drawing table
