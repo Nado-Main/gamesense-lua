@@ -2,10 +2,9 @@ local ui_get, ui_set = ui.get, ui.set
 local draw_text = client.draw_text
 local draw_rectangle = client.draw_rectangle
 local width, height = client.screen_size()
+local last_tick = 0
 
-local aim_table = {}
-local g_LastBullet = { ["id"] = 0, ["time"] = globals.curtime(), ["reg"] = false }
-
+local aim_table, shot_state = { }, { }
 local Elements = {
     is_active = ui.new_checkbox("MISC", "Settings", "Aim bot logging"),
     palette = ui.new_color_picker("MISC", "Settings", "Logging picker", 16, 22, 29, 160),
@@ -19,16 +18,39 @@ local Elements = {
     end)
 }
 
+function dump(o)
+   if type(o) == 'table' then
+      local s = '{ '
+      for k,v in pairs(o) do
+         if type(k) ~= 'number' then k = '"'..k..'"' end
+         s = s .. '['..k..'] = ' .. dump(v) .. ','
+      end
+      return s .. '} '
+   else
+      return tostring(o)
+   end
+end
+
 local function TicksTime(tick)
     return globals.tickinterval() * tick
 end
 
-local function hook_aim_event(status, m)
-    if m.id ~= g_LastBullet.id then
-        return
+local function get_server_rate(f)
+    local tickrate = 64
+    local cmdrate = client.get_cvar("cl_cmdrate") or 64
+    local updaterate = client.get_cvar("cl_updaterate") or 64
+        
+    if cmdrate <= updaterate then 
+        tickrate = cmdrate
+    elseif updaterate <= cmdrate then 
+        tickrate = updaterate
     end
 
-    if g_LastBullet["reg"] == true then
+    return math.floor((f * tickrate) + 0.5)
+end
+
+local function hook_aim_event(status, m)
+    if shot_state[m.id]["got"] then
         for n, _ in pairs(aim_table) do
             if aim_table[n].id == m.id then
                 aim_table[n]["hit"] = status
@@ -43,39 +65,42 @@ client.set_event_callback("aim_miss", function(m) hook_aim_event("aim_miss", m) 
 client.set_event_callback("bullet_impact", function(m)
     local g_Local = entity.get_local_player()
     local g_EntID = client.userid_to_entindex(m.userid)
-    if g_Local == g_EntID and g_LastBullet["time"] > globals.curtime() then
-        g_LastBullet["reg"] = true
+    if g_Local == g_EntID and last_tick ~= globals.tickcount() then
+
+        local m_valid = {}
+        for n, _ in pairs(shot_state) do
+            if not shot_state[n]["got"] and shot_state[n]["time"] > globals.curtime() then
+                m_valid[#m_valid + 1] = { ["id"] = n, ["data"] = shot_state[n] }
+            end
+        end
+
+        if #m_valid > 0 then
+            for i = 10, 2, -1 do m_valid[i] = m_valid[i-1] end
+            for i = #m_valid, 1, -1 do
+                shot_state[m_valid[i].id]["got"] = true
+            end
+        end
+
+        last_tick = globals.tickcount()
     end
 end)
 
 client.set_event_callback("aim_fire", function(m)
     if ui_get(Elements.is_active) then
+
         for i = 10, 2, -1 do
             aim_table[i] = aim_table[i-1]
         end
 
-        local tickrate = 64
-        local cmdrate = client.get_cvar("cl_cmdrate") or 64
-        local updaterate = client.get_cvar("cl_updaterate") or 64
-        
-        if cmdrate <= updaterate then 
-            tickrate = cmdrate
-        elseif updaterate <= cmdrate then 
-            tickrate = updaterate
-        end
-
         local nick = entity.get_player_name(m.target)
-        local ticks = math.floor((m.backtrack * tickrate) + 0.5)
-
-        aim_table[1], g_LastBullet = { 
+        aim_table[1] = { 
             ["id"] = m.id, ["hit"] = 0, 
             ["player"] = string.sub(nick, 0, 14),
-            ["dmg"] = m.damage, ["bt"] = ticks, 
+            ["dmg"] = m.damage, ["bt"] = get_server_rate(m.backtrack), 
             ["lc"] = (m.teleported and "Breaking" or "No"), ["pri"] = (m.high_priority and "High" or "Normal")
-        }, {
-            ["id"] = m.id,
-            ["time"] = globals.curtime() + TicksTime(15)
         }
+
+        shot_state[m.id] = { ["hit"] = false, ["time"] = globals.curtime() + TicksTime(15) + client.latency() }
     end
 end)
 
@@ -142,4 +167,4 @@ local function visibility()
 end
 
 visibility()
-ui.set_callback(Elements.is_active, visibility) 
+ui.set_callback(Elements.is_active, visibility)
