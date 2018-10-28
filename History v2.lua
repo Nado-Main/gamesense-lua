@@ -4,7 +4,7 @@ local draw_rectangle = client.draw_rectangle
 local width, height = client.screen_size()
 
 local aim_table = {}
-local g_LastBullet = { ["id"] = 0, ["time"] = globals.realtime(), ["reg"] = false }
+local g_LastBullet = { ["id"] = 0, ["time"] = globals.curtime(), ["reg"] = false }
 
 local Elements = {
     is_active = ui.new_checkbox("MISC", "Settings", "Aim bot logging"),
@@ -43,7 +43,7 @@ client.set_event_callback("aim_miss", function(m) hook_aim_event("aim_miss", m) 
 client.set_event_callback("bullet_impact", function(m)
     local g_Local = entity.get_local_player()
     local g_EntID = client.userid_to_entindex(m.userid)
-    if g_Local == g_EntID and g_LastBullet["time"] > globals.realtime() then
+    if g_Local == g_EntID and g_LastBullet["time"] > globals.curtime() then
         g_LastBullet["reg"] = true
     end
 end)
@@ -68,7 +68,7 @@ client.set_event_callback("aim_fire", function(m)
         local ticks = math.floor((m.backtrack * tickrate) + 0.5)
         g_LastBullet = {
             ["id"] = m.id,
-            ["time"] = globals.realtime() + TicksTime(15)
+            ["time"] = globals.curtime() + TicksTime(15)
         }
 
         aim_table[1] = { 
