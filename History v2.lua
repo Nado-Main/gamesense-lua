@@ -142,4 +142,4 @@ local function visibility()
 end
 
 visibility()
-ui.set_callback(Elements.is_active, visibility)
+ui.set_callback(Elements.is_active, visibility) 
