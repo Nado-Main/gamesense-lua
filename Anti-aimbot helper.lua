@@ -14,6 +14,7 @@ local rf = {
 
 local vars = { "Accurate yaw on unlag", "Reset LBY in air", "Refine fake lag" }
 local aa_helper = ui.new_multiselect("AA", "Other", "Anti-aimbot helper", vars)
+local aa_hotkey = ui.new_hotkey("AA", "Other", "Anti-aimbot hotkey")
 
 local function contains(tab, val)
     for index, value in ipairs(tab) do
@@ -80,8 +81,8 @@ client.set_event_callback("run_command", function(c)
 		ui_set(rf.flag_amount, #g_PingAmount.over > #g_PingAmount.normal and "Maximum" or "Dynamic")
 	end
 
-	if contains(g_pAAHelper, vars[1]) then -- Breaking resolvers
-		if not is_ent_moving(g_pLocal, 1) and is_ent_onground(g_pLocal) then
+	if  contains(g_pAAHelper, vars[1]) then -- Breaking resolvers
+		if not is_ent_moving(g_pLocal, 1) and is_ent_onground(g_pLocal) and ui_get(aa_hotkey) then
 			ui_set(rf.crooked, true)
 			ui_set(rf.twist, true)
 		elseif contains(g_pAAHelper, vars[2]) then
