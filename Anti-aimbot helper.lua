@@ -82,9 +82,9 @@ client.set_event_callback("run_command", function(c)
 	end
 
 	if  contains(g_pAAHelper, vars[1]) then -- Breaking resolvers
-		if not is_ent_moving(g_pLocal, 1) and is_ent_onground(g_pLocal) and ui_get(aa_hotkey) then
+		if not is_ent_moving(g_pLocal, 1) and is_ent_onground(g_pLocal) then
 			ui_set(rf.crooked, true)
-			ui_set(rf.twist, true)
+			ui_set(rf.twist, ui_get(aa_hotkey))
 		elseif contains(g_pAAHelper, vars[2]) then
 			-- Crooked in AIR
 			ui_set(rf.crooked, not is_ent_onground(g_pLocal))
