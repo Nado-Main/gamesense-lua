@@ -292,19 +292,15 @@ end
 
 local multicfg_paste = ui.new_button("RAGE", "Other", "Paste vars", paste)
 
-local function notAlive(entity)
-	return (entity == nil or ent.get_prop(entity, "m_lifeState") ~= 0)
-end
-
 local function run_cmd(e)
-	if not interface.get(multicfg_active) or notAlive(ent.get_local()) then
+	if not interface.get(multicfg_active) or entity.is_alive(ent.get_local()) then
 		return
 	end
 
 	local wpn_id = ent.get_prop(ent.get_local(), "m_hActiveWeapon")
   	local m_iItemDefinitionIndex = ent.get_prop(wpn_id, "m_iItemDefinitionIndex")
   	local item_di = bit.band(m_iItemDefinitionIndex, 0xFFFF)
-
+  	
   	if currentWeapon ~= item_di then
   		currentWeapon = item_di
 
