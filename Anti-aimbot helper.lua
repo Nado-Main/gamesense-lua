@@ -13,7 +13,10 @@ local rf = {
 }
 
 local vars = { "Accurate yaw on unlag", "Reset LBY in air", "Refine fake lag" }
+local a_var = { "Full", "Dynamic" }
+
 local aa_helper = ui.new_multiselect("AA", "Other", "Anti-aimbot helper", vars)
+local aa_d = ui.new_combobox("AA", "Other", "Activate variant", a_var)
 local aa_hotkey = ui.new_hotkey("AA", "Other", "Anti-aimbot hotkey")
 
 local function contains(tab, val)
@@ -47,7 +50,7 @@ local function g_DormantPlayers(enemy_only, alive_only)
 			if enemy_only and not entity.is_enemy(player) then is_enemy = false end
 
 			if is_enemy then
-				if alive_only and not entity.is_alive(player) then  is_alive = false end
+				if alive_only and not entity.is_alive(player) then is_alive = false end
 				if is_alive then table.insert(result, player) end
 			end
 
@@ -83,8 +86,23 @@ client.set_event_callback("run_command", function(c)
 
 	if  contains(g_pAAHelper, vars[1]) then -- Breaking resolvers
 		if not is_ent_moving(g_pLocal, 1) and is_ent_onground(g_pLocal) then
-			ui_set(rf.crooked, true)
-			ui_set(rf.twist, ui_get(aa_hotkey))
+
+			local n = ui_get(aa_d)
+			local cr, tw = false, false
+
+			if n == a_var[1] then -- Full
+				if ui_get(aa_hotkey) then
+					cr, tw = true, true
+				end
+			elseif n == a_var[2] then -- Dynamic
+				cr = true
+				if ui_get(aa_hotkey) then
+					tw = true
+				end
+			end
+
+			ui_set(rf.crooked, cr)
+			ui_set(rf.twist, tw)
 		elseif contains(g_pAAHelper, vars[2]) then
 			-- Crooked in AIR
 			ui_set(rf.crooked, not is_ent_onground(g_pLocal))
