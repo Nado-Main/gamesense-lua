@@ -37,7 +37,11 @@ local function get_server_rate(f)
 end
 
 local function hook_aim_event(status, m)
-    if shot_state[m.id]["got"] then
+    if status == "aim_hit" then
+        shot_state[m.id]["got"] = true
+    end
+
+    if shot_state[m.id] and shot_state[m.id]["got"] then
         for n, _ in pairs(aim_table) do
             if aim_table[n].id == m.id then
                 aim_table[n]["hit"] = status
@@ -86,6 +90,8 @@ client.set_event_callback("aim_fire", function(m)
             LC = "Breaking"
         elseif not m.teleported and backtrack < 0 then
             LC = "Predict"
+        elseif backtrack == 0 then
+            LC = "-"
         else
             LC = backtrack .. " Ticks"
         end
@@ -97,7 +103,7 @@ client.set_event_callback("aim_fire", function(m)
             ["pri"] = (m.high_priority and "High" or "Normal")
         }
 
-        shot_state[m.id] = { ["hit"] = false, ["time"] = globals.curtime() + TicksTime(15) + client.latency() }
+        shot_state[m.id] = { ["hit"] = false, ["time"] = globals.curtime() + TicksTime(32) + client.latency() }
     end
 end)
 
