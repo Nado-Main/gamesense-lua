@@ -37,9 +37,9 @@ local function get_server_rate(f)
 end
 
 local function hook_aim_event(status, m)
-    if not ui_get(Elements.is_active) then
-        return
-    end
+	if not ui_get(Elements.is_active) then
+		return
+	end
 
     if status == "aim_hit" then
         shot_state[m.id]["got"] = true
@@ -57,9 +57,9 @@ end
 client.set_event_callback("aim_hit", function(m) hook_aim_event("aim_hit", m) end)
 client.set_event_callback("aim_miss", function(m) hook_aim_event("aim_miss", m) end)
 client.set_event_callback("bullet_impact", function(m)
-    if not ui_get(Elements.is_active) then
-        return
-    end
+	if not ui_get(Elements.is_active) then
+		return
+	end
 
     local g_Local = entity.get_local_player()
     local g_EntID = client.userid_to_entindex(m.userid)
