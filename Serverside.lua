@@ -18,7 +18,7 @@ end
 
 ui.set_callback(ui.new_combobox("PLAYERS", "Adjustments", "Move teams", recompile(swap_list)), function(c)
 	local act = ui_get(c)
-	if act ~= swap_list[1] then
+	if act ~= swap_list[1] and swap_list[act] ~= nil then
 		ui.set(c, "-")
 		local name = get_name(ui_get(Players))
 
