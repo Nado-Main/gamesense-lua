@@ -1,44 +1,25 @@
-local interface = {
-	get = ui.get,
-	set = ui.set,
-    ref = ui.reference
-}
-
-local ent = {
-	get_local = entity.get_local_player,
-	get_pweapon = entity.get_player_weapon,
-	get_classname = entity.get_classname,
-	get_prop = entity.get_prop
-}
-
 local cache = nil
-local ref = interface.ref("RAGE", "Other", "Fake lag correction")
-local isActive = ui.new_checkbox("RAGE", "Other", "Zeus bot correction")
+local flag_correction = ui.reference("RAGE", "Other", "Fake lag correction")
+local zb_selection = ui.new_combobox("RAGE", "Other", "Zeus bot correction", { "-", "Disabled", "Delay shot" })
 
-local function notAlive(entity)
-	return (entity == nil or ent.get_prop(entity, "m_lifeState") ~= 0)
-end
+local ui_get, ui_set = ui.get, ui.set
+client.set_event_callback("run_command", function(c)
+	local g_pLocal = entity.get_local_player()
+	local g_pWeapon = entity.get_player_weapon(g_pLocal)
+	local g_pWeaponName = entity.get_classname(g_pWeapon)
 
-local function on_run_command(c)
-    if cache == nil then
-        cache = interface.get(ref)
-    end
-	
-	if not interface.get(isActive) or notAlive(ent.get_local()) then
-		return
+	local selection = ui_get(zb_selection)
+	local selection = selection == "Disabled" and "Off" or selection
+
+	if selection ~= "-" and entity.is_alive(g_pLocal) then
+	    cache = cache ~= nil and cache or ui_get(flag_correction)
+	    if g_pWeaponName ~= "CWeaponTaser" then
+	        if cache ~= nil then
+	            ui_set(flag_correction, cache)
+	            cache = nil
+	        end
+	    else
+			ui_set(flag_correction, selection)
+	    end
 	end
-	
-	local weapon = ent.get_pweapon(ent.get_local())
-	local weapon_name = ent.get_classname(weapon)
-
-    if weapon_name ~= "CWeaponTaser" then
-        if cache ~= nil then
-            interface.set(ref, cache)
-            cache = nil
-        end
-    else
-		interface.set(ref, "Off")
-    end
-end
-
-client.set_event_callback("run_command", on_run_command)
+end)
