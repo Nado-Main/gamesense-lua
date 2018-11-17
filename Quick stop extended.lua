@@ -1,31 +1,44 @@
+local selection = { "Off", "Can shoot", "No movement" }
+local quickstop = ui.reference("RAGE", "Other", "Quick stop")
+local qs_selection = ui.new_combobox("RAGE", "other", "Override quick stop", selection)
+
+local cache = { ["qs"] = "On" }
 local ui_get, ui_set = ui.get, ui.set
-local quick_stop = ui.reference("RAGE", "Other", "Quick stop")
-local quick_stop_ext = ui.new_checkbox("RAGE", "Other", "Minimal speed")
-local quick_stop_cache = "On"
 
-local function is_ent_moving(ent)
-	local vel_x = entity.get_prop(ent, "m_vecVelocity[0]")
-	local vel_y = entity.get_prop(ent, "m_vecVelocity[1]")
-	local vel_z = entity.get_prop(ent, "m_vecVelocity[2]")
-
-	return math.sqrt(vel_x * vel_x + vel_y * vel_y + vel_z * vel_z) > 20
+local function is_ent_moving(ent, ground_check, speed)
+	local x, y, z = entity.get_prop(ent, "m_vecVelocity")
+	if not ground_check then
+		return math.sqrt(x*x + y*y + z*z) > speed
+	else
+		return (math.sqrt(x*x + y*y + z*z) > speed and math.sqrt(z^2) == 0)
+	end
 end
 
 client.set_event_callback("run_command", function(c)
 	local g_pLocal = entity.get_local_player()
 	local g_pWeapon = entity.get_player_weapon(g_pLocal)
+	local qs_mode = ui_get(qs_selection)
 
-	if ui_get(quick_stop_ext) and entity.is_alive(g_pLocal) then
+	if qs_mode ~= selection[1] and entity.is_alive(g_pLocal) then
+
 		local m_flNextPrimaryAttack = entity.get_prop(g_pWeapon, "m_flNextPrimaryAttack")
 		local m_nTickBase = entity.get_prop(g_pLocal, "m_nTickBase")
 		local g_CanShoot = (m_flNextPrimaryAttack <= m_nTickBase * globals.tickinterval())
 
-		if quick_stop_cache == "On" and not is_ent_moving(g_pLocal) or not g_CanShoot then
-			ui_set(quick_stop, "Off")
-			quick_stop_cache = ui_get(quick_stop)
-		elseif quick_stop_cache == "Off" and is_ent_moving(g_pLocal) and g_CanShoot then
-			ui_set(quick_stop, "On")
-			quick_stop_cache = ui_get(quick_stop)
+		local c, n = false, false
+
+		if qs_mode == selection[3] then
+			c = is_ent_moving(g_pLocal, false, 20)
+		else
+			c = g_CanShoot
+		end
+
+		if cache.qs == "On" and not c then
+			ui_set(quickstop, "Off")
+			cache["qs"] = ui_get(quickstop)
+		elseif cache.qs == "Off" and c then
+			ui_set(quickstop, "On")
+			cache["qs"] = ui_get(quickstop)
 		end
 	end
 end)
