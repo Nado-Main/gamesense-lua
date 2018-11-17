@@ -26,7 +26,6 @@ client.set_event_callback("run_command", function(c)
 		local g_CanShoot = (m_flNextPrimaryAttack <= m_nTickBase * globals.tickinterval())
 
 		local c, n = false, false
-
 		if qs_mode == selection[3] then
 			c = is_ent_moving(g_pLocal, false, 20)
 		else
