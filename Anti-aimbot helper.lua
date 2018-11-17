@@ -18,9 +18,6 @@ for i = -90, 90 do
 	elseif i > -61 and i < 61 then
 		fr_y[i] = "Unsafe: " .. i
 	end
-
-	fr_y[ui_get(rf.fr_realyaw)] = "Real yaw"
-	fr_y[ui_get(rf.fr_fakeyaw)] = "Fake yaw"
 end
 
 local vars = { "Yaw correction", "Fake lowerbody in air", "Refine fake lag" }
@@ -29,6 +26,7 @@ local a_var = { "Default", "Basic" }
 local aa_helper = ui.new_multiselect("AA", "Other", "Anti-aimbot helper", vars)
 local aa_d = ui.new_combobox("AA", "Other", "Override yaw correction", a_var)
 local aa_hotkey = ui.new_hotkey("AA", "Other", "Yaw correction hotkey")
+local aa_fr_hotkey = ui.new_hotkey("AA", "Other", "Disable freestanding on key")
 
 local aa_fr_breaker = ui.new_checkbox("AA", "Other", "Smart yaw direction")
 local aa_fr_offset = ui.new_slider("AA", "Other", "Override freestanding offset", -90, 90, 63, true, "°", 1, fr_y)
@@ -93,7 +91,7 @@ local function getAngles(cmd, ent)
 	return { ["real"] = real, ["fake"] = fake, ["lby"] = lby, ["cam"] = camera }
 end
 
-local can_flick, last_act, last_fake = false, nil, nil
+local can_flick, last_act, last_fake, fr_cache = false, nil, nil, nil
 client.set_event_callback("run_command", function(c)
 	local g_pAAHelper = ui_get(aa_helper)
 	local g_pLocal = entity.get_local_player()
@@ -101,6 +99,19 @@ client.set_event_callback("run_command", function(c)
 	if not g_pLocal or not entity.is_alive(g_pLocal) or #g_pAAHelper == 0 then
 		return
 	end
+
+	if fr_cache == nil then
+        fr_cache = ui_get(rf.freestanding)
+    end
+
+    if ui_get(aa_fr_hotkey) then
+        ui_set(rf.freestanding, { "" })
+    else
+        if fr_cache ~= nil then
+            ui_set(rf.freestanding, fr_cache)
+            fr_cache = nil
+        end
+    end
 
 	-- Some stuff
 	local g_Players = g_DormantPlayers(true, true)
