@@ -1,6 +1,6 @@
 local selection = { "Off", "Can shoot", "No movement" }
 local quickstop = ui.reference("RAGE", "Other", "Quick stop")
-local qs_selection = ui.new_combobox("RAGE", "other", "Override quick stop", selection)
+local qs_selection = ui.new_combobox("RAGE", "Other", "Override quick stop", selection)
 
 local cache = { ["qs"] = "On" }
 local ui_get, ui_set = ui.get, ui.set
