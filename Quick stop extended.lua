@@ -20,7 +20,6 @@ client.set_event_callback("run_command", function(c)
 	local qs_mode = ui_get(qs_selection)
 
 	if qs_mode ~= selection[1] and entity.is_alive(g_pLocal) then
-
 		local m_flNextPrimaryAttack = entity.get_prop(g_pWeapon, "m_flNextPrimaryAttack")
 		local m_nTickBase = entity.get_prop(g_pLocal, "m_nTickBase")
 		local g_CanShoot = (m_flNextPrimaryAttack <= m_nTickBase * globals.tickinterval())
