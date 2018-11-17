@@ -1,32 +1,26 @@
-local interface = {
-	get = ui.get,
-	set = ui.set,
-    ref = ui.reference,
-    indicator = client.draw_indicator,
-	slider = ui.new_slider,
-    hotkey = ui.new_hotkey
-}
+local min_dmg_table, cache = { [0] = "Auto" }, nil
 
-local cache = nil
-local ref = interface.ref("RAGE", "Aimbot", "Minimum damage")
+for i = 1, 26 do
+    -- HP + {1-26}
+    min_dmg_table[100 + i] = "HP+" .. i
+end
 
-local mdmg_key = interface.hotkey("RAGE", "Other", "Override minimum damage")
-local mdmg_numeric = interface.slider("RAGE", "Other", "Minimum damage", 1, 126, 105, 1, "hp")
+local mdmg_num = ui.new_slider("RAGE", "Other", "Override minimum damage", 0, 126, 55, true, "", 1, min_dmg_table)
+local mdmg_key = ui.new_hotkey("RAGE", "Other", "Minimim damage hotkey")
 
-local function on_paint(c)
-    if cache == nil then
-        cache = interface.get(ref)
-    end
+local minimum_damage = ui.reference("RAGE", "Aimbot", "Minimum damage")
+local ui_get, ui_set, draw_indicator = ui.get, ui.set, client.draw_indicator
 
-    if interface.get(mdmg_key) then
-        interface.set(ref, interface.get(mdmg_numeric))
-        interface.indicator(c, 255, 255, 255, 150, "DMG")
+client.set_event_callback("paint", function(c)
+    cache = cache ~= nil and cache or ui_get(minimum_damage)
+
+    if ui_get(mdmg_key) then
+        ui_set(minimum_damage, ui_get(mdmg_num))
+        draw_indicator(c, 255, 255, 255, 150, "DMG")
     else
         if cache ~= nil then
-            interface.set(ref, cache)
+            ui_set(minimum_damage, cache)
             cache = nil
         end
     end
-end
-
-client.set_event_callback("paint", on_paint)
+end)
