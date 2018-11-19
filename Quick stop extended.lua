@@ -97,15 +97,13 @@ client.set_event_callback("run_command", function(c)
 	local m_nTickBase = entity.get_prop(g_pLocal, "m_nTickBase")
 	local g_CanShoot = (m_flNextPrimaryAttack <= m_nTickBase * globals.tickinterval())
 
-	local can_shot = is_contains(qs_mode, selection[1])
-	local speed_checks = is_contains(qs_mode, selection[2])
+	local stop_state, speed_checks = true, is_contains(qs_mode, selection[2])
 
-	local stop_state = true
 	if speed_checks then
 		stop_state = is_ent_moving(g_pLocal, false, ui_get(qs_speed_threshold))
 	end
 
-	if can_shot then
+	if is_contains(qs_mode, selection[1]) then
 		if (speed_checks and stop_state) or not speed_checks then
 			stop_state = g_CanShoot
 		end
@@ -113,6 +111,7 @@ client.set_event_callback("run_command", function(c)
 
 	if is_contains(qs_mode, selection[3]) then
 		can_set_speed = ui_get(qs_hotkey)
+		
 		if not can_set_speed then
 			set_speed(450)
 		else
