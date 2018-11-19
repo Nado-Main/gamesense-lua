@@ -1,6 +1,7 @@
-local selection = { "Off", "Minimal walk", "Can shoot", "No movement" }
+local selection = { "Can shoot", "Speed checks", "Minimal walk" }
 local quickstop = ui.reference("RAGE", "Other", "Quick stop")
-local qs_selection = ui.new_combobox("RAGE", "Other", "Override quick stop", selection)
+local qs_selection = ui.new_multiselect("RAGE", "Other", "Override quick stop", selection)
+local qs_speed_threshold = ui.new_slider("RAGE", "Other", "Quick stop speed threshold", 1, 100, 10, true)
 local qs_hotkey = ui.new_hotkey("RAGE", "Other", "Minimal walk hotkey")
 
 local cache = { ["qs"] = "On" }
@@ -18,6 +19,14 @@ local wpn_list = {
 	["CWeaponSCAR20"] = { ["speed"] = 120, ["on_strafe"] = 28.85, ["can_zoon"] = true },
 	["CWeaponHKP2000"] = { ["speed"] = 240, ["on_strafe"] = 57.7, ["can_zoon"] = false }
 }
+
+local function is_contains(tab, val)
+    for index, value in ipairs(tab) do
+        if value == val then return true end
+    end
+
+    return false
+end
 
 local function is_ent_moving(ent, ground_check, speed)
 	local x, y, z = entity.get_prop(ent, "m_vecVelocity")
@@ -80,33 +89,34 @@ client.set_event_callback("run_command", function(c)
 	local g_pWeapon = entity.get_player_weapon(g_pLocal)
 	local qs_mode = ui_get(qs_selection)
 
-	if not entity.is_alive(g_pLocal) or qs_mode == selection[1] then
+	if not entity.is_alive(g_pLocal) then
 		return
 	end
 
-	if qs_mode ~= selection[2] then
-		local m_flNextPrimaryAttack = entity.get_prop(g_pWeapon, "m_flNextPrimaryAttack")
-		local m_nTickBase = entity.get_prop(g_pLocal, "m_nTickBase")
-		local g_CanShoot = (m_flNextPrimaryAttack <= m_nTickBase * globals.tickinterval())
+	local m_flNextPrimaryAttack = entity.get_prop(g_pWeapon, "m_flNextPrimaryAttack")
+	local m_nTickBase = entity.get_prop(g_pLocal, "m_nTickBase")
+	local g_CanShoot = (m_flNextPrimaryAttack <= m_nTickBase * globals.tickinterval())
 
-		local c, n = false, false
-		if qs_mode == selection[4] then
-			c = is_ent_moving(g_pLocal, false, 20)
-		else
-			c = g_CanShoot
-		end
+	local can_shot = is_contains(qs_mode, selection[1])
+	local speed_checks = is_contains(qs_mode, selection[2])
 
-		if cache.qs == "On" and not c then
-			ui_set(quickstop, "Off")
-			cache["qs"] = ui_get(quickstop)
-		elseif cache.qs == "Off" and c then
-			ui_set(quickstop, "On")
-			cache["qs"] = ui_get(quickstop)
+	local stop_state = true
+	if speed_checks then
+		stop_state = is_ent_moving(g_pLocal, false, ui_get(qs_speed_threshold))
+	end
+
+	if can_shot then
+		if (speed_checks and stop_state) or not speed_checks then
+			stop_state = g_CanShoot
 		end
-	else
+	end
+
+	if is_contains(qs_mode, selection[3]) then
 		can_set_speed = ui_get(qs_hotkey)
 		if not can_set_speed then
 			set_speed(450)
+		else
+			stop_state = false
 		end
 
 		wpn_id = entity.get_player_weapon(g_pLocal)
@@ -115,4 +125,24 @@ client.set_event_callback("run_command", function(c)
 
 		get_speed(wpn_class, wpn_zoomLevel)
 	end
+
+	if cache.qs == "On" and not stop_state then
+		ui_set(quickstop, "Off")
+		cache["qs"] = ui_get(quickstop)
+	elseif cache.qs == "Off" and stop_state then
+		ui_set(quickstop, "On")
+		cache["qs"] = ui_get(quickstop)
+	end
 end)
+
+local function visibility()
+    local a = ui_get(qs_selection)
+    local b = ui_get(qs_speed_threshold)
+    local c = ui_get(qs_hotkey)
+
+    ui.set_visible(qs_speed_threshold, is_contains(a, selection[2]))
+    ui.set_visible(qs_hotkey, is_contains(a, selection[3]))
+end
+
+visibility()
+ui.set_callback(qs_selection, visibility)
