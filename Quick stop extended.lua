@@ -140,8 +140,6 @@ end)
 
 local function visibility()
     local a = ui_get(qs_selection)
-    local b = ui_get(qs_speed_threshold)
-    local c = ui_get(qs_hotkey)
 
     ui.set_visible(qs_speed_threshold, is_contains(a, selection[2]))
     ui.set_visible(qs_hotkey, is_contains(a, selection[3]))
