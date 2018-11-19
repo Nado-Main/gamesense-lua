@@ -125,6 +125,10 @@ client.set_event_callback("run_command", function(c)
 		get_speed(wpn_class, wpn_zoomLevel)
 	end
 
+	if not speed_checks or not is_contains(qs_mode, selection[1]) then
+		return
+	end
+
 	if cache.qs == "On" and not stop_state then
 		ui_set(quickstop, "Off")
 		cache["qs"] = ui_get(quickstop)
