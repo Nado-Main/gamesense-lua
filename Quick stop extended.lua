@@ -1,9 +1,23 @@
-local selection = { "Off", "Can shoot", "No movement" }
+local selection = { "Off", "Minimal walk", "Can shoot", "No movement" }
 local quickstop = ui.reference("RAGE", "Other", "Quick stop")
 local qs_selection = ui.new_combobox("RAGE", "Other", "Override quick stop", selection)
+local qs_hotkey = ui.new_hotkey("RAGE", "Other", "Minimal walk hotkey")
 
 local cache = { ["qs"] = "On" }
 local ui_get, ui_set = ui.get, ui.set
+
+local IN_FORWARD, IN_BACK, IN_LEFT, IN_RIGHT = 8, 16, 512, 1024
+local wpn_list = { 
+	["CAK47"] = { ["speed"] = 215, ["on_strafe"] = 51.69, ["can_zoon"] = false },
+	["CWeaponSSG08"] = { ["speed"] = 230, ["on_strafe"] = 55.295, ["can_zoon"] = false },
+	["CWeaponAWP"] = { ["speed"] = 100, ["on_strafe"] = 24.04, ["can_zoon"] = true },
+	["CWeaponG3SG1"] = { ["speed"] = 120, ["on_strafe"] = 28.85, ["can_zoon"] = true },
+	["CWeaponGlock"] = { ["speed"] = 240, ["on_strafe"] = 57.7, ["can_zoon"] = false },
+	["CWeaponElite"] = { ["speed"] = 240, ["on_strafe"] = 57.7, ["can_zoon"] = false },
+	["CDEagle"] = { ["speed"] = 230, ["on_strafe"] = 55.295, ["can_zoon"] = false },
+	["CWeaponSCAR20"] = { ["speed"] = 120, ["on_strafe"] = 28.85, ["can_zoon"] = true },
+	["CWeaponHKP2000"] = { ["speed"] = 240, ["on_strafe"] = 57.7, ["can_zoon"] = false }
+}
 
 local function is_ent_moving(ent, ground_check, speed)
 	local x, y, z = entity.get_prop(ent, "m_vecVelocity")
@@ -14,18 +28,69 @@ local function is_ent_moving(ent, ground_check, speed)
 	end
 end
 
+local function set_speed(new_speed)
+	if client.get_cvar("cl_sidespeed") == 450 and new_speed == 450 then
+		return
+	end
+
+    client.set_cvar("cl_sidespeed", new_speed)
+    client.set_cvar("cl_forwardspeed", new_speed)
+    client.set_cvar("cl_backspeed", new_speed)
+end
+
+local function is_button_pressed(btn, ent)
+	if ent ~= nil then
+	    local buttons = entity.get_prop(ent, "m_nOldButtons")
+	    return buttons ~= nil and (bit.band(buttons, btn) == btn) or false
+	end
+
+	return false
+end
+
+local function is_strafing()
+	local g_pLocal = entity.get_local_player()
+	return
+		is_button_pressed(IN_LEFT, g_pLocal) and is_button_pressed(IN_FORWARD, g_pLocal) or
+		is_button_pressed(IN_RIGHT, g_pLocal) and is_button_pressed(IN_FORWARD, g_pLocal) or
+		is_button_pressed(IN_LEFT, g_pLocal) and is_button_pressed(IN_BACK, g_pLocal) or
+		is_button_pressed(IN_RIGHT, g_pLocal) and is_button_pressed(IN_BACK, g_pLocal)
+end
+
+local function get_speed(weapon, zoom)
+	if can_set_speed then
+		local current_weapon = wpn_list[weapon]
+		if not current_weapon or current_weapon.can_zoom ~= false then
+			if not current_weapon or zoom == 0 then
+				set_speed(450)
+				return
+			end
+		end
+
+		if is_strafing() then
+			set_speed(current_weapon.on_strafe)
+		else
+			x = current_weapon.speed / 100
+			set_speed(x * 34)
+		end
+	end
+end
+
 client.set_event_callback("run_command", function(c)
 	local g_pLocal = entity.get_local_player()
 	local g_pWeapon = entity.get_player_weapon(g_pLocal)
 	local qs_mode = ui_get(qs_selection)
 
-	if qs_mode ~= selection[1] and entity.is_alive(g_pLocal) then
+	if not entity.is_alive(g_pLocal) or qs_mode == selection[1] then
+		return
+	end
+
+	if qs_mode ~= selection[2] then
 		local m_flNextPrimaryAttack = entity.get_prop(g_pWeapon, "m_flNextPrimaryAttack")
 		local m_nTickBase = entity.get_prop(g_pLocal, "m_nTickBase")
 		local g_CanShoot = (m_flNextPrimaryAttack <= m_nTickBase * globals.tickinterval())
 
 		local c, n = false, false
-		if qs_mode == selection[3] then
+		if qs_mode == selection[4] then
 			c = is_ent_moving(g_pLocal, false, 20)
 		else
 			c = g_CanShoot
@@ -38,5 +103,16 @@ client.set_event_callback("run_command", function(c)
 			ui_set(quickstop, "On")
 			cache["qs"] = ui_get(quickstop)
 		end
+	else
+		can_set_speed = ui_get(qs_hotkey)
+		if not can_set_speed then
+			set_speed(450)
+		end
+
+		wpn_id = entity.get_player_weapon(g_pLocal)
+		wpn_class = entity.get_classname(wpn_id)
+		wpn_zoomLevel = entity.get_prop(wpn_id, "m_zoomLevel")
+
+		get_speed(wpn_class, wpn_zoomLevel)
 	end
 end)
