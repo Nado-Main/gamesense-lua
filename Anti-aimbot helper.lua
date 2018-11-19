@@ -96,10 +96,6 @@ client.set_event_callback("run_command", function(c)
 	local g_pAAHelper = ui_get(aa_helper)
 	local g_pLocal = entity.get_local_player()
 	
-	if not g_pLocal or not entity.is_alive(g_pLocal) or #g_pAAHelper == 0 then
-		return
-	end
-
 	if fr_cache == nil then
         fr_cache = ui_get(rf.freestanding)
     end
@@ -112,6 +108,10 @@ client.set_event_callback("run_command", function(c)
             fr_cache = nil
         end
     end
+	
+	if not g_pLocal or not entity.is_alive(g_pLocal) or #g_pAAHelper == 0 then
+		return
+	end
 
 	-- Some stuff
 	local g_Players = g_DormantPlayers(true, true)
