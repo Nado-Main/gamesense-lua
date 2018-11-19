@@ -9,15 +9,15 @@ local ui_get, ui_set = ui.get, ui.set
 
 local IN_FORWARD, IN_BACK, IN_LEFT, IN_RIGHT = 8, 16, 512, 1024
 local wpn_list = { 
-	["CAK47"] = { ["speed"] = 215, ["on_strafe"] = 51.69, ["can_zoon"] = false },
-	["CWeaponSSG08"] = { ["speed"] = 230, ["on_strafe"] = 55.295, ["can_zoon"] = false },
-	["CWeaponAWP"] = { ["speed"] = 100, ["on_strafe"] = 24.04, ["can_zoon"] = true },
-	["CWeaponG3SG1"] = { ["speed"] = 120, ["on_strafe"] = 28.85, ["can_zoon"] = true },
-	["CWeaponGlock"] = { ["speed"] = 240, ["on_strafe"] = 57.7, ["can_zoon"] = false },
-	["CWeaponElite"] = { ["speed"] = 240, ["on_strafe"] = 57.7, ["can_zoon"] = false },
-	["CDEagle"] = { ["speed"] = 230, ["on_strafe"] = 55.295, ["can_zoon"] = false },
-	["CWeaponSCAR20"] = { ["speed"] = 120, ["on_strafe"] = 28.85, ["can_zoon"] = true },
-	["CWeaponHKP2000"] = { ["speed"] = 240, ["on_strafe"] = 57.7, ["can_zoon"] = false }
+	["CAK47"] = { ["speed"] = 215, ["on_strafe"] = 51.69, ["has_zoom"] = false },
+	["CWeaponSSG08"] = { ["speed"] = 230, ["on_strafe"] = 55.295, ["has_zoom"] = false },
+	["CWeaponAWP"] = { ["speed"] = 100, ["on_strafe"] = 24.04, ["has_zoom"] = true },
+	["CWeaponG3SG1"] = { ["speed"] = 120, ["on_strafe"] = 28.85, ["has_zoom"] = true },
+	["CWeaponGlock"] = { ["speed"] = 240, ["on_strafe"] = 57.7, ["has_zoom"] = false },
+	["CWeaponElite"] = { ["speed"] = 240, ["on_strafe"] = 57.7, ["has_zoom"] = false },
+	["CDEagle"] = { ["speed"] = 230, ["on_strafe"] = 55.295, ["has_zoom"] = false },
+	["CWeaponSCAR20"] = { ["speed"] = 120, ["on_strafe"] = 28.85, ["has_zoom"] = true },
+	["CWeaponHKP2000"] = { ["speed"] = 240, ["on_strafe"] = 57.7, ["has_zoom"] = false }
 }
 
 local function is_contains(tab, val)
