@@ -159,8 +159,33 @@ client.set_event_callback("paint", function(c)
     local n = ui_get(Elements.table_size)
     local col_sz = 24 + (16 * (#aim_table > n and n or #aim_table))
 
-    draw_rectangle(c, x, y, 265, col_sz, 22, 20, 26, 100)
-    draw_rectangle(c, x, y, 265, 15, r, g, b, a)
+    -- Analysing table
+    local width_s, nt = 0, { ["none"] = 0, ["predict"] = 0, ["breaking"] = 0, ["backtrack"] = 0 }
+    for i = 1, ui_get(Elements.table_size), 1 do
+        if aim_table[i] then
+            local lc = aim_table[i].lagcomp
+            if lc == 0 then
+                nt["none"] = nt.none + 1
+            elseif lc == 1 then
+                nt["backtrack"] = nt.backtrack + 1
+            elseif lc == 2 then
+                nt["breaking"] = nt.breaking + 1
+            elseif lc == 3 then
+                nt["predict"] = nt.predict + 1
+            end
+        end
+    end
+
+    if nt.predict > 0 then
+        width_s = 265
+    elseif nt.breaking > 0 or nt.backtrack > 0 then
+        width_s = 250
+    else
+        width_s = 240
+    end
+
+    draw_rectangle(c, x, y, width_s, col_sz, 22, 20, 26, 100)
+    draw_rectangle(c, x, y, width_s, 15, r, g, b, a)
 
     -- Drawing first column
     draw_text(c, x + 10, y + 8, 255, 255, 255, 255, "-c", 70, "ID")
