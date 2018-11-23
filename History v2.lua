@@ -37,9 +37,9 @@ local function get_server_rate(f)
 end
 
 local function hook_aim_event(status, m)
-	if not ui_get(Elements.is_active) then
-		return
-	end
+    if not ui_get(Elements.is_active) then
+        return
+    end
 
     if status == "aim_hit" then
         shot_state[m.id]["got"] = true
@@ -57,9 +57,9 @@ end
 client.set_event_callback("aim_hit", function(m) hook_aim_event("aim_hit", m) end)
 client.set_event_callback("aim_miss", function(m) hook_aim_event("aim_miss", m) end)
 client.set_event_callback("bullet_impact", function(m)
-	if not ui_get(Elements.is_active) then
-		return
-	end
+    if not ui_get(Elements.is_active) then
+        return
+    end
 
     local g_Local = entity.get_local_player()
     local g_EntID = client.userid_to_entindex(m.userid)
@@ -86,28 +86,29 @@ end)
 client.set_event_callback("aim_fire", function(m)
     if ui_get(Elements.is_active) then
 
-        for i = 10, 2, -1 do
-            aim_table[i] = aim_table[i-1]
-        end
-
-        local LC = "-"
+        local lagcomp, LC = -1, "-"
         local nick = entity.get_player_name(m.target)
         local backtrack = get_server_rate(m.backtrack)
+        for i = 10, 2, -1 do aim_table[i] = aim_table[i-1] end
 
         if m.teleported then
+            lagcomp = 2
             LC = "Breaking"
         elseif not m.teleported and backtrack < 0 then
-            LC = "Predict"
+            lagcomp = 3
+            LC = "Predict (" .. math.abs(backtrack) .. "t)"
         elseif backtrack == 0 then
+            lagcomp = 0
             LC = "-"
         else
+            lagcomp = 1
             LC = backtrack .. " Ticks"
         end
 
         aim_table[1] = { 
             ["id"] = m.id, ["hit"] = 0, 
             ["player"] = string.sub(nick, 0, 14),
-            ["dmg"] = m.damage, ["lc"] = LC,
+            ["dmg"] = m.damage, ["lc"] = LC, ["lagcomp"] = lagcomp,
             ["pri"] = (m.high_priority and "High" or "Normal")
         }
 
@@ -122,6 +123,13 @@ local function drawTable(c, count, x, y, data)
         local yaw = y + 15 + (count * 16)
         local r, g, b = 0, 0, 0
 
+        local lagcomp = data.lagcomp == 0 and 1 or data.lagcomp
+        local clx = {
+            [1] = { 255, 255, 255 },
+            [2] = { 255, 84, 84 },
+            [3] = { 181, 181, 100 }
+        }
+
         if data.hit == "aim_hit" then
             r, g, b = 94, 230, 75
         elseif data.hit == "aim_miss" then
@@ -134,8 +142,8 @@ local function drawTable(c, count, x, y, data)
         draw_text(c, pitch - 3, yaw + 1, 255, 255, 255, 255, nil, 70, data.id)
         draw_text(c, pitch + 23, yaw + 1, 255, 255, 255, 255, nil, 70, data.player)
         draw_text(c, pitch + 106, yaw + 1, 255, 255, 255, 255, nil, 70, data.dmg)
-        draw_text(c, pitch + 137, yaw + 1, 255, 255, 255, 255, nil, 70, data.lc)
-        draw_text(c, pitch + 191, yaw + 1, 255, 255, 255, 255, nil, 70, data.pri)
+        draw_text(c, pitch + 137, yaw + 1, 255, 255, 255, 255, nil, 70, data.pri)
+        draw_text(c, pitch + 183, yaw + 1, clx[lagcomp][1], clx[lagcomp][2], clx[lagcomp][3], 255, nil, 70, data.lc)
 
         return (count + 1)
     end
@@ -148,19 +156,18 @@ client.set_event_callback("paint", function(c)
 
     local x, y, d = ui_get(Elements.size_x), ui_get(Elements.size_y), 0
     local r, g, b, a = ui_get(Elements.palette)
-
     local n = ui_get(Elements.table_size)
     local col_sz = 24 + (16 * (#aim_table > n and n or #aim_table))
 
-    draw_rectangle(c, x, y, 244, col_sz, 22, 20, 26, 100)
-    draw_rectangle(c, x, y, 244, 15, r, g, b, a)
+    draw_rectangle(c, x, y, 265, col_sz, 22, 20, 26, 100)
+    draw_rectangle(c, x, y, 265, 15, r, g, b, a)
 
     -- Drawing first column
     draw_text(c, x + 10, y + 8, 255, 255, 255, 255, "-c", 70, "ID")
     draw_text(c, x + 10 + 35, y + 8, 255, 255, 255, 255, "-c", 70, "PLAYER")
     draw_text(c, x + 10 + 114, y + 8, 255, 255, 255, 255, "-c", 70, "DMG")
-    draw_text(c, x + 10 + 155, y + 8, 255, 255, 255, 255, "-c", 70, "LAG COMP")
-    draw_text(c, x + 10 + 207, y + 8, 255, 255, 255, 255, "-c", 70, "PRIORITY")
+    draw_text(c, x + 10 + 153, y + 8, 255, 255, 255, 255, "-c", 70, "PRIORITY")
+    draw_text(c, x + 10 + 201, y + 8, 255, 255, 255, 255, "-c", 70, "LAG COMP")
 
     -- Drawing table
     for i = 1, ui_get(Elements.table_size), 1 do
