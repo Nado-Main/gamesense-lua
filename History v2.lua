@@ -178,8 +178,10 @@ client.set_event_callback("paint", function(c)
 
     if nt.predict > 0 then
         width_s = 265
-    elseif nt.breaking > 0 or nt.backtrack > 0 then
+    elseif nt.breaking > 0 then
         width_s = 250
+    elseif nt.backtrack > 0 then
+        width_s = 245
     else
         width_s = 240
     end
