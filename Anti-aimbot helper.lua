@@ -1,212 +1,216 @@
 local ui_get, ui_set = ui.get, ui.set
-local e_get_all, e_get_prop = entity.get_all, entity.get_prop
+local draw_text = client.draw_text
+local draw_rectangle = client.draw_rectangle
+local width, height = client.screen_size()
+local last_tick = 0
 
-local fr_y, rf = { }, {
-	freestanding = ui.reference("AA", "Anti-aimbot angles", "Freestanding"),
-	fr_realyaw = ui.reference("AA", "Anti-aimbot angles", "Freestanding real yaw offset"),
-	fr_fakeyaw = ui.reference("AA", "Anti-aimbot angles", "Freestanding fake yaw offset"),
+local aim_table, shot_state = { }, { }
+local Elements = {
+    is_active = ui.new_checkbox("MISC", "Settings", "Aim bot logging"),
+    palette = ui.new_color_picker("MISC", "Settings", "Logging picker", 16, 22, 29, 160),
 
-	crooked = ui.reference("AA", "Anti-aimbot angles", "Crooked"),
-	twist = ui.reference("AA", "Anti-aimbot angles", "Twist"),
+    table_size = ui.new_slider("MISC", "Settings", "Maximum amount", 2, 10, 5),
+    size_x = ui.new_slider("MISC", "Settings", "X Axis", 1, width, 90, true, "px"),
+    size_y = ui.new_slider("MISC", "Settings", "Y Axis", 1, height, 400, true, "px"),
 
-	flag_amount = ui.reference("AA", "Fake lag", "Amount")
+    resolver_state = ui.reference("RAGE", "Other", "Anti-aim correction"),
+    reset_table = ui.new_button("MISC", "Settings", "Reset table", function()
+        aim_table = {}
+    end)
 }
 
-for i = -90, 90 do
-	if i > -36 and i < 36 then
-		fr_y[i] = "Danger: " .. i
-	elseif i > -61 and i < 61 then
-		fr_y[i] = "Unsafe: " .. i
-	end
+local function TicksTime(tick)
+    return globals.tickinterval() * tick
 end
 
-local vars = { "Yaw correction", "Fake lowerbody in air", "Refine fake lag" }
-local a_var = { "Default", "Basic" }
-
-local aa_helper = ui.new_multiselect("AA", "Other", "Anti-aimbot helper", vars)
-local aa_d = ui.new_combobox("AA", "Other", "Override yaw correction", a_var)
-local aa_hotkey = ui.new_hotkey("AA", "Other", "Yaw correction hotkey")
-local aa_fr_hotkey = ui.new_hotkey("AA", "Other", "Disable freestanding on key")
-
-local aa_fr_breaker = ui.new_checkbox("AA", "Other", "Smart yaw direction")
-local aa_fr_offset = ui.new_slider("AA", "Other", "Override freestanding offset", -90, 90, 63, true, "°", 1, fr_y)
-
-local function contains(tab, val)
-    for index, value in ipairs(tab) do
-        if value == val then 
-        	return true
-        end
+local function get_server_rate(f)
+    local tickrate = 64
+    local cmdrate = client.get_cvar("cl_cmdrate") or 64
+    local updaterate = client.get_cvar("cl_updaterate") or 64
+        
+    if cmdrate <= updaterate then 
+        tickrate = cmdrate
+    elseif updaterate <= cmdrate then 
+        tickrate = updaterate
     end
 
-    return false
+    return math.floor((f * tickrate) + 0.5)
 end
 
-local function is_ent_moving(ent, speed)
-	local x, y, z = e_get_prop(ent, "m_vecVelocity")
-	return math.sqrt(x*x + y*y + z*z) > speed
-end
-
-local function is_ent_onground(ent)
-	local x, y, z = e_get_prop(ent, "m_vecVelocity")
-	return math.sqrt(z^2) == 0
-end
-
-local function g_DormantPlayers(enemy_only, alive_only)
-	local enemy_only = enemy_only ~= nil and enemy_only or false
-	local alive_only = alive_only ~= nil and alive_only or true
-	local result = {}
-
-	local player_resource = e_get_all("CCSPlayerResource")[1]
-	for player=1, globals.maxplayers() do
-		if e_get_prop(player_resource, "m_bConnected", player) == 1 then
-
-			local is_enemy, is_alive = true, true
-			if enemy_only and not entity.is_enemy(player) then is_enemy = false end
-
-			if is_enemy then
-				if alive_only and not entity.is_alive(player) then is_alive = false end
-				if is_alive then table.insert(result, player) end
-			end
-
-		end
-	end
-
-	return result
-end
-
-local function getAngles(cmd, ent)
-	local lby = e_get_prop(ent, "m_flLowerBodyYawTarget")
-	local _, yaw = e_get_prop(ent, "m_angAbsRotation")
-	local _, fake, _ = e_get_prop(ent, "m_angEyeAngles")
-
-	local real = nil
-	if yaw ~= nil then
-		local bodyyaw = e_get_prop(ent, "m_flPoseParameter", 11)
-		if bodyyaw ~= nil then
-			bodyyaw = bodyyaw * 120 - 60
-			real = yaw + bodyyaw
-		end
-	end
-
-	return { ["real"] = real, ["fake"] = fake, ["lby"] = lby, ["cam"] = camera }
-end
-
-local can_flick, last_act, last_fake, fr_cache = false, nil, nil, nil
-client.set_event_callback("run_command", function(c)
-	local g_pAAHelper = ui_get(aa_helper)
-	local g_pLocal = entity.get_local_player()
-	
-	if fr_cache == nil then
-        fr_cache = ui_get(rf.freestanding)
-    end
-
-    if ui_get(aa_fr_hotkey) then
-        ui_set(rf.freestanding, { "" })
-    else
-        if fr_cache ~= nil then
-            ui_set(rf.freestanding, fr_cache)
-            fr_cache = nil
-        end
-    end
-	
-	if not g_pLocal or not entity.is_alive(g_pLocal) or #g_pAAHelper == 0 then
+local function hook_aim_event(status, m)
+	if not ui_get(Elements.is_active) then
 		return
 	end
 
-	-- Some stuff
-	local g_Players = g_DormantPlayers(true, true)
-	local g_PingAmount = { ["over"] = {}, ["normal"] = {} }
-	local g_CSPlayerResource = e_get_all("CCSPlayerResource")[1]
-	local angs = getAngles(c, g_pLocal)
+    if status == "aim_hit" then
+        shot_state[m.id]["got"] = true
+    end
 
-	if contains(g_pAAHelper, vars[3]) and #g_Players then -- Adaptive fakelag
-		for i=1, #g_Players do
-			local Latency = e_get_prop(g_CSPlayerResource, string.format("%03d", g_Players[i]))
-			if entity.is_alive(g_Players[i]) and Latency > 0 then
-				table.insert(Latency > 45 and g_PingAmount["over"] or g_PingAmount["normal"], Latency)
-			end
-		end
+    if shot_state[m.id] and shot_state[m.id]["got"] then
+        for n, _ in pairs(aim_table) do
+            if aim_table[n].id == m.id then
+                aim_table[n]["hit"] = status
+            end
+        end
+    end
+end
 
-		ui_set(rf.flag_amount, #g_PingAmount.over > #g_PingAmount.normal and "Maximum" or "Dynamic")
+client.set_event_callback("aim_hit", function(m) hook_aim_event("aim_hit", m) end)
+client.set_event_callback("aim_miss", function(m) hook_aim_event("aim_miss", m) end)
+client.set_event_callback("bullet_impact", function(m)
+	if not ui_get(Elements.is_active) then
+		return
 	end
 
-	if ui_get(aa_fr_breaker) then
-		if cache == nil then
-			cache = ui_get(rf.fr_fakeyaw)
-		end
+    local g_Local = entity.get_local_player()
+    local g_EntID = client.userid_to_entindex(m.userid)
+    if g_Local == g_EntID and last_tick ~= globals.tickcount() then
 
-		if ui_get(aa_hotkey) and not is_ent_moving(g_pLocal, 1) then
-			ui_set(rf.fr_fakeyaw, ui_get(aa_fr_offset))
-		else
-			if cache ~= nil then
-				ui_set(rf.fr_fakeyaw, cache)
-				cache = nil
-			end
-		end
-	end
+        local m_valid = {}
+        for n, _ in pairs(shot_state) do
+            if not shot_state[n]["got"] and shot_state[n]["time"] > globals.curtime() then
+                m_valid[#m_valid + 1] = { ["id"] = n, ["data"] = shot_state[n] }
+            end
+        end
 
-	if contains(g_pAAHelper, vars[1]) then -- Breaking resolvers
-		if not is_ent_moving(g_pLocal, 1) and is_ent_onground(g_pLocal) then
+        if #m_valid > 0 then
+            for i = 10, 2, -1 do m_valid[i] = m_valid[i-1] end
+            for i = #m_valid, 1, -1 do
+                shot_state[m_valid[i].id]["got"] = true
+            end
+        end
 
-			local n = ui_get(aa_d)
-			local cr, tw = false, false
+        last_tick = globals.tickcount()
+    end
+end)
 
-			if n == a_var[1] then -- Full
-				if ui_get(aa_hotkey) then
-					cr, tw = true, true
-				end
-			elseif n == a_var[2] then -- Dynamic
-				cr = true
-				if ui_get(aa_hotkey) then
-					tw = true
-				end
-			end
+client.set_event_callback("aim_fire", function(m)
+    if ui_get(Elements.is_active) then
 
-			if ui_get(aa_fr_breaker) then
+        local lagcomp, LC = -1, "-"
+        local nick = entity.get_player_name(m.target)
+        local backtrack = get_server_rate(m.backtrack)
+        for i = 10, 2, -1 do aim_table[i] = aim_table[i-1] end
 
-				if can_flick == false and last_fake ~= angs.lby then
-					can_flick = ui_get(aa_hotkey)
-				end
+        if m.teleported then
+            lagcomp = 2
+            LC = "Breaking"
+        elseif not m.teleported and backtrack < 0 then
+            lagcomp = 3
+            LC = "Predict (" .. math.abs(backtrack) .. "t)"
+        elseif backtrack == 0 then
+            lagcomp = 0
+            LC = "-"
+        else
+            lagcomp = 1
+            LC = backtrack .. " Ticks"
+        end
 
-				cr, tw = can_flick, can_flick
-			end
+        aim_table[1] = { 
+            ["id"] = m.id, ["hit"] = not ui.get(Elements.resolver_state) and "aim_unknown" or 0, 
+            ["player"] = string.sub(nick, 0, 14),
+            ["dmg"] = m.damage, ["lc"] = LC, ["lagcomp"] = lagcomp,
+            ["pri"] = (m.high_priority and "High" or "Normal")
+        }
 
-			ui_set(rf.crooked, cr)
-			ui_set(rf.twist, tw)
-		elseif contains(g_pAAHelper, vars[2]) then
-			-- Crooked in AIR
-			ui_set(rf.crooked, not is_ent_onground(g_pLocal))
-			ui_set(rf.twist, not is_ent_onground(g_pLocal))
-		else
-			ui_set(rf.crooked, false)
-			ui_set(rf.twist, false)
-		end
-	elseif contains(g_pAAHelper, vars[2]) then -- Crooked in AIR
-		ui_set(rf.crooked, not is_ent_onground(g_pLocal))
-	else
-		ui_set(rf.crooked, false)
-		ui_set(rf.twist, false)
-	end
+        shot_state[m.id] = { ["hit"] = false, ["time"] = globals.curtime() + TicksTime(32) + client.latency() }
+    end
+end)
 
-	if ui_get(aa_hotkey) ~= last_act then
-		last_fake = angs.lby
-		can_flick = false
-	end
+local function drawTable(c, count, x, y, data)
+    if data then
+        local y = y + 4
+        local pitch = x + 10
+        local yaw = y + 15 + (count * 16)
+        local r, g, b = 0, 0, 0
 
-	last_act = ui_get(aa_hotkey)
+        local lagcomp = data.lagcomp == 0 and 1 or data.lagcomp
+        local clx = {
+            [1] = { 255, 255, 255 },
+            [2] = { 255, 84, 84 },
+            [3] = { 181, 181, 100 }
+        }
+
+        if data.hit == "aim_hit" then
+            r, g, b = 94, 230, 75
+        elseif data.hit == "aim_miss" then
+            r, g, b = 255, 84, 84
+        elseif data.hit == "aim_unknown" then
+            r, g, b = 245, 127, 23
+        else -- Doesnt registered
+            r, g, b = 118, 171, 255
+        end
+
+        draw_rectangle(c, x, yaw, 2, 15, r, g, b, 255)
+        draw_text(c, pitch - 3, yaw + 1, 255, 255, 255, 255, nil, 70, data.id)
+        draw_text(c, pitch + 23, yaw + 1, 255, 255, 255, 255, nil, 70, data.player)
+        draw_text(c, pitch + 106, yaw + 1, 255, 255, 255, 255, nil, 70, data.dmg)
+        draw_text(c, pitch + 137, yaw + 1, 255, 255, 255, 255, nil, 70, data.pri)
+        draw_text(c, pitch + 183, yaw + 1, clx[lagcomp][1], clx[lagcomp][2], clx[lagcomp][3], 255, nil, 70, data.lc)
+
+        return (count + 1)
+    end
+end
+
+client.set_event_callback("paint", function(c)
+    if not ui_get(Elements.is_active) then
+        return
+    end
+
+    local x, y, d = ui_get(Elements.size_x), ui_get(Elements.size_y), 0
+    local r, g, b, a = ui_get(Elements.palette)
+    local n = ui_get(Elements.table_size)
+    local col_sz = 24 + (16 * (#aim_table > n and n or #aim_table))
+
+    -- Analysing table
+    local width_s, nt = 0, { ["none"] = 0, ["predict"] = 0, ["breaking"] = 0, ["backtrack"] = 0 }
+    for i = 1, ui_get(Elements.table_size), 1 do
+        if aim_table[i] then
+            local lc = aim_table[i].lagcomp
+            if lc == 0 then
+                nt["none"] = nt.none + 1
+            elseif lc == 1 then
+                nt["backtrack"] = nt.backtrack + 1
+            elseif lc == 2 then
+                nt["breaking"] = nt.breaking + 1
+            elseif lc == 3 then
+                nt["predict"] = nt.predict + 1
+            end
+        end
+    end
+
+    if nt.predict > 0 then
+        width_s = 265
+    elseif nt.breaking > 0 then
+        width_s = 250
+    elseif nt.backtrack > 0 then
+        width_s = 245
+    else
+        width_s = 240
+    end
+
+    draw_rectangle(c, x, y, width_s, col_sz, 22, 20, 26, 100)
+    draw_rectangle(c, x, y, width_s, 15, r, g, b, a)
+
+    -- Drawing first column
+    draw_text(c, x + 10, y + 8, 255, 255, 255, 255, "-c", 70, "ID")
+    draw_text(c, x + 10 + 35, y + 8, 255, 255, 255, 255, "-c", 70, "PLAYER")
+    draw_text(c, x + 10 + 114, y + 8, 255, 255, 255, 255, "-c", 70, "DMG")
+    draw_text(c, x + 10 + 153, y + 8, 255, 255, 255, 255, "-c", 70, "PRIORITY")
+    draw_text(c, x + 10 + 201, y + 8, 255, 255, 255, 255, "-c", 70, "LAG COMP")
+
+    -- Drawing table
+    for i = 1, ui_get(Elements.table_size), 1 do
+        d = drawTable(c, d, x, y, aim_table[i])
+    end
 end)
 
 local function visibility()
-	local a = ui_get(aa_helper)
-	local fr_b = ui_get(aa_fr_breaker)
-	local cyaw_active = contains(a, vars[1])
-
-	ui.set_visible(aa_d, cyaw_active)
-	ui.set_visible(aa_hotkey, cyaw_active)
-	ui.set_visible(aa_fr_breaker, cyaw_active)
-	ui.set_visible(aa_fr_offset, cyaw_active and fr_b)
+    local rpc = ui_get(Elements.is_active)
+    ui.set_visible(Elements.table_size, rpc)
+    ui.set_visible(Elements.size_x, rpc)
+    ui.set_visible(Elements.size_y, rpc)
 end
 
 visibility()
-ui.set_callback(aa_helper, visibility)
-ui.set_callback(aa_fr_breaker, visibility)
+ui.set_callback(Elements.is_active, visibility)
