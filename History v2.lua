@@ -13,6 +13,7 @@ local Elements = {
     size_x = ui.new_slider("MISC", "Settings", "X Axis", 1, width, 90, true, "px"),
     size_y = ui.new_slider("MISC", "Settings", "Y Axis", 1, height, 400, true, "px"),
 
+    resolver_state = ui.reference("RAGE", "Other", "Anti-aim correction"),
     reset_table = ui.new_button("MISC", "Settings", "Reset table", function()
         aim_table = {}
     end)
@@ -37,9 +38,9 @@ local function get_server_rate(f)
 end
 
 local function hook_aim_event(status, m)
-    if not ui_get(Elements.is_active) then
-        return
-    end
+	if not ui_get(Elements.is_active) then
+		return
+	end
 
     if status == "aim_hit" then
         shot_state[m.id]["got"] = true
@@ -57,9 +58,9 @@ end
 client.set_event_callback("aim_hit", function(m) hook_aim_event("aim_hit", m) end)
 client.set_event_callback("aim_miss", function(m) hook_aim_event("aim_miss", m) end)
 client.set_event_callback("bullet_impact", function(m)
-    if not ui_get(Elements.is_active) then
-        return
-    end
+	if not ui_get(Elements.is_active) then
+		return
+	end
 
     local g_Local = entity.get_local_player()
     local g_EntID = client.userid_to_entindex(m.userid)
@@ -106,7 +107,7 @@ client.set_event_callback("aim_fire", function(m)
         end
 
         aim_table[1] = { 
-            ["id"] = m.id, ["hit"] = 0, 
+            ["id"] = m.id, ["hit"] = not ui.get(Elements.resolver_state) and "aim_unknown" or 0, 
             ["player"] = string.sub(nick, 0, 14),
             ["dmg"] = m.damage, ["lc"] = LC, ["lagcomp"] = lagcomp,
             ["pri"] = (m.high_priority and "High" or "Normal")
@@ -134,6 +135,8 @@ local function drawTable(c, count, x, y, data)
             r, g, b = 94, 230, 75
         elseif data.hit == "aim_miss" then
             r, g, b = 255, 84, 84
+        elseif data.hit == "aim_unknown" then
+            r, g, b = 245, 127, 23
         else -- Doesnt registered
             r, g, b = 118, 171, 255
         end
