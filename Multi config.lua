@@ -9,6 +9,9 @@ local dv_wpn = { "hkp2000", "deagle", "revolver", "ssg08", "awp", "duals", "scar
 local to_sort = { "Pistols", "SMGs", "Rifles", "Shotguns", "Snipers", "Heavys" }
 local bad_wpn = { -1, 0, 7, 8, 9, 11 }
 
+local min_dmg_table = { [0] = "Auto" }
+for i = 1, 26 do min_dmg_table[100 + i] = "HP+" .. i end
+
 local lookup = {
 	[32] = { ["name"] = "P2000", ["sname"] = "hkp2000", ["type"] = "pistol" },
 	[61] = { ["name"] = "USP-S", ["sname"] = "usp_silencer", ["type"] = "pistol" },
@@ -62,27 +65,33 @@ local reference = {
 			["type"] = "slider",
 			["min"] = 0,
 			["max"] = 100,
-			["default"] = 50,
-			["sh"] = true,
-			["symbol"] = "%"
+			["init_value"] = 50,
+			["show_tooltip"] = true,
+			["unit"] = "%",
+			["scale"] = 1,
+			["tooltips"] = nil
 		}
 	},
 	{ "RAGE", "Aimbot", "Minimum damage", ["options"] = { 
 			["type"] = "slider",
 			["min"] = 0,
 			["max"] = 126,
-			["default"] = 10,
-			["sh"] = true,
-			["symbol"] = ""
+			["init_value"] = 10,
+			["show_tooltip"] = true,
+			["unit"] = "",
+			["scale"] = 1,
+			["tooltips"] = min_dmg_table
 		}
 	},
 	{ "RAGE", "Aimbot", "Stomach hitbox scale", ["options"] = { 
 			["type"] = "slider",
 			["min"] = 1,
 			["max"] = 100,
-			["default"] = 100,
-			["sh"] = true,
-			["symbol"] = "%"
+			["init_value"] = 100,
+			["show_tooltip"] = true,
+			["unit"] = "%",
+			["scale"] = 1,
+			["tooltips"] = nil
 		}
 	},
 	{ "RAGE", "Aimbot", "Multi-point", ["options"] = { 
@@ -91,13 +100,15 @@ local reference = {
 			["bydefault"] = nil
 		}
 	},
-	{ "RAGE", "Aimbot", "Multi-point scale", ["options"] = { 
+	{ "RAGE", "Aimbot", "Multi-point scale", ["options"] = {
 			["type"] = "slider",
 			["min"] = 1,
 			["max"] = 100,
-			["default"] = 55,
-			["sh"] = true,
-			["symbol"] = "%"
+			["init_value"] = 55,
+			["show_tooltip"] = true,
+			["unit"] = "%",
+			["scale"] = 1,
+			["tooltips"] = nil
 		}
 	},
 	{ "RAGE", "Other", "Accuracy boost", ["options"] = { 
@@ -207,7 +218,7 @@ local function m_weapon(wpn)
 			c[l_name] = ui.new_checkbox("RAGE", "Other", wpn .. ": " .. l_name)
 
 		elseif l_options.type == "slider" then
-			c[l_name] = ui.new_slider("RAGE", "Other", wpn .. ": " .. l_name, l_options.min, l_options.max, l_options.default, l_options.sh, l_options.symbol)
+			c[l_name] = ui.new_slider("RAGE", "Other", wpn .. ": " .. l_name, l_options.min, l_options.max, l_options.init_value, l_options.show_tooltip, l_options.unit, l_options.scale, l_options.tooltips)
 
 		elseif l_options.type == "combobox" then
 			c[l_name] = ui.new_combobox("RAGE", "Other", wpn .. ": " .. l_name, l_options.select)
