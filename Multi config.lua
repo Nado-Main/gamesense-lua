@@ -124,7 +124,7 @@ local reference = {
 	},
 	{ "RAGE", "Other", "Fake lag correction", ["options"] = { 
 			["type"] = "combobox",
-			["select"] = { "Delay shot", "Predict" },
+			["select"] = { "Off", "Delay shot", "Predict" },
 			["bydefault"] = nil
 		}
 	},
