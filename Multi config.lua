@@ -122,6 +122,12 @@ local reference = {
 			["bydefault"] = nil
 		}
 	},
+	{ "RAGE", "Other", "Fake lag correction", ["options"] = { 
+			["type"] = "combobox",
+			["select"] = { "Delay shot", "Predict" },
+			["bydefault"] = nil
+		}
+	},
 	{ "RAGE", "Other", "Prefer body aim", ["options"] = { 
 			["type"] = "combobox",
 			["select"] = { "Off", "Always on", "Fake angles", "Aggressive", "High inaccuracy" }
