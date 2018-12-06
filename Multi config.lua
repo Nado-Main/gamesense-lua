@@ -1,41 +1,13 @@
 local bit = require "bit"
-
-local interface = {
-	get = ui.get,
-	set = ui.set,
-    visible = ui.set_visible,
-    callback = ui.set_callback,
-    multiselect = ui.new_multiselect,
-	checkbox = ui.new_checkbox,
-	slider = ui.new_slider,
-	hotkey = ui.new_hotkey,
-	combobox = ui.new_combobox,
-}
-
-local cl = {
-	log = client.log,
-	indicator = client.draw_indicator,
-	circle_outline = client.draw_circle_outline,
-	circle = client.draw_circle,
-	eye_pos = client.eye_position,
-	camera_angles = client.camera_angles
-}
-
-local ent = {
-	get_local = entity.get_local_player,
-	get_prop = entity.get_prop,
-	get_all = entity.get_all,
-	get_players = entity.get_players,
-	uid_to_ent = client.userid_to_entindex,
-	hitbox_pos = entity.hitbox_position
-}
+local ui_get, ui_set, ui_visible = ui.get, ui.set, ui.set_visible
 
 -- Variables
 local cache = {}
-local cp, currentWeapon = nil, nil
-local curWeapon, wpn_info, bad_wpn = nil, {}, { -1, 0, 7, 8, 9, 11 }
+local old_weapon, current_weapon, wpn_info = nil, nil, {}
+
 local dv_wpn = { "hkp2000", "deagle", "revolver", "ssg08", "awp", "duals", "scar20" }
 local to_sort = { "Pistols", "SMGs", "Rifles", "Shotguns", "Snipers", "Heavys" }
+local bad_wpn = { -1, 0, 7, 8, 9, 11 }
 
 local lookup = {
 	[32] = { ["name"] = "P2000", ["sname"] = "hkp2000", ["type"] = "pistol" },
@@ -147,19 +119,27 @@ local reference = {
 }
 
 -- Functions
-
-local function m_GetArgByReferenre(ref_id)
-	for k, _ in pairs(reference) do 
-
-		if reference[k][3] == ref_id then
-			return reference[k]
+local function m_table_recreate(l, id)
+	local r = {}
+	for k, _ in pairs(l) do
+		if id ~= nil then
+			r[#r+1] = l[k][id]
+		else
+			r[#r+1] = l[k]
 		end
-
 	end
 
-	return nil
+	return r
 end
 
+-- Menu
+local multicfg_active = ui.new_checkbox("RAGE", "Other", "Multi config")
+local multicfg_ignore_menu = ui.new_checkbox("RAGE", "Other", "Ignore menu state")
+local multicfg_bywpn = ui.new_checkbox("RAGE", "Other", "Sort by class")
+local multicfg_divisor = ui.new_checkbox("RAGE", "Other", "Weapon divisor")
+local multicfg_wpns = ui.new_multiselect("RAGE", "Other", "Active weapons", m_table_recreate(lookup, "name"))
+
+-- Functions
 local function m_CreateReference(e)
 	for num, _ in pairs(reference) do
 
@@ -169,30 +149,7 @@ local function m_CreateReference(e)
 	end
 end
 
-local function recreateTable(l, id)
-	local r = {}
-	for k, _ in pairs(l) do
-
-		if id ~= nil then
-			r[#r+1] = l[k][id]
-		else
-			r[#r+1] = l[k]
-		end
-
-	end
-
-	return r
-end
-
--- Menu
-local multicfg_active = interface.checkbox("RAGE", "Other", "Multi config")
-local multicfg_bywpn = interface.checkbox("RAGE", "Other", "Sort by class")
-local multicfg_divisor = interface.checkbox("RAGE", "Other", "Weapon divisor")
-local multicfg_wpns = interface.multiselect("RAGE", "Other", "Active weapons", recreateTable(lookup, "name"))
-
--- Functions
-
-function TableConcat(t1,t2)
+function m_table_concat(t1,t2)
     for i=1, #t2 do 
     	t1[#t1+1] = t2[i]
     end
@@ -202,40 +159,43 @@ end
 
 local function m_vis(table, var)
 	for k, _ in pairs(table) do 
-		interface.visible(table[k], var)
+		ui_visible(table[k], var)
 	end
 end
 
 
-local function m_valid(table, val)
-   for i=1,#table do
-      if table[i] == val then return true end
-   end
-
-   return false
-end
-
-function m_valid2(o, val)
-   if type(o) == 'table' then
-      for k,v in pairs(o) do
-      	if tostring(k) == tostring(val) then return true end
-      end
-   end
-
-   return false
+local function m_valid(table, val, new_method)
+	if new_method == true then
+		-- Forcing extra table valid checks
+		if type(table) == 'table' then
+			for k,v in pairs(table) do
+				if tostring(k) == tostring(val) then 
+					return true
+				end
+			end
+		end
+		return false
+	else -- Default valid checks
+		for i=1,#table do
+			if table[i] == val then 
+				return true
+			end
+		end
+		return false
+	end
 end
 
 local function m_hook(table, isActive)
 	if isActive then
 		for k, _ in pairs(reference) do 
 			local n = reference[k]
-			interface.set(cache[n[3]], interface.get(table[n[3]]))
+			ui_set(cache[n[3]], ui_get(table[n[3]]))
 		end
 	end
 end
 
 local function m_weapon(wpn)
-	c = { active = interface.checkbox("RAGE", "Other", wpn .. ": " .. "Active") }
+	c = { active = ui.new_checkbox("RAGE", "Other", wpn .. ": " .. "Active") }
 
 	for k, _ in pairs(reference) do 
 		local g = {}
@@ -244,19 +204,19 @@ local function m_weapon(wpn)
 		local l_options = refered.options
 
 		if l_options.type == "checkbox" then
-			c[l_name] = interface.checkbox("RAGE", "Other", wpn .. ": " .. l_name)
+			c[l_name] = ui.new_checkbox("RAGE", "Other", wpn .. ": " .. l_name)
 
 		elseif l_options.type == "slider" then
-			c[l_name] = interface.slider("RAGE", "Other", wpn .. ": " .. l_name, l_options.min, l_options.max, l_options.default, l_options.sh, l_options.symbol)
+			c[l_name] = ui.new_slider("RAGE", "Other", wpn .. ": " .. l_name, l_options.min, l_options.max, l_options.default, l_options.sh, l_options.symbol)
 
 		elseif l_options.type == "combobox" then
-			c[l_name] = interface.combobox("RAGE", "Other", wpn .. ": " .. l_name, l_options.select)
+			c[l_name] = ui.new_combobox("RAGE", "Other", wpn .. ": " .. l_name, l_options.select)
 
 		elseif l_options.type == "multiselect" then
-			c[l_name] = interface.multiselect("RAGE", "Other", wpn .. ": " .. l_name, l_options.select)
+			c[l_name] = ui.new_multiselect("RAGE", "Other", wpn .. ": " .. l_name, l_options.select)
 			if l_options.bydefault then
 
-				interface.set(c[l_name], l_options.bydefault)
+				ui_set(c[l_name], l_options.bydefault)
 				
 			end
 		end
@@ -266,23 +226,23 @@ local function m_weapon(wpn)
 end
 
 local function paste()
-  	if	interface.get(multicfg_active) and 
-  		cp ~= nil and m_valid2(lookup, currentWeapon) then
-  		local wpn = wpn_info[cp]
+  	if ui_get(multicfg_active) and 
+  		current_weapon ~= nil and m_valid(lookup, old_weapon, true) then
+  		local wpn = wpn_info[current_weapon]
 
 		for k, _ in pairs(reference) do 
 			local n = reference[k]
-			interface.set(wpn[n[3]], interface.get(cache[n[3]]))
+			ui_set(wpn[n[3]], ui_get(cache[n[3]]))
 		end
 	end
 end
 
 local function m_HookWpns()
 	foo = {}
-	tbl = recreateTable(lookup, "name")
+	tbl = m_table_recreate(lookup, "name")
 
-	TableConcat(foo, tbl)
-	TableConcat(foo, to_sort)
+	m_table_concat(foo, tbl)
+	m_table_concat(foo, to_sort)
 
 	for k, v in pairs(foo) do
 		m_weapon(foo[k])
@@ -292,67 +252,17 @@ end
 
 local multicfg_paste = ui.new_button("RAGE", "Other", "Paste vars", paste)
 
-local function run_cmd(e)
-	if not interface.get(multicfg_active) or entity.is_alive(ent.get_local()) then
-		return
-	end
-
-	local wpn_id = ent.get_prop(ent.get_local(), "m_hActiveWeapon")
-  	local m_iItemDefinitionIndex = ent.get_prop(wpn_id, "m_iItemDefinitionIndex")
-  	local item_di = bit.band(m_iItemDefinitionIndex, 0xFFFF)
-  	
-  	if currentWeapon ~= item_di then
-  		currentWeapon = item_di
-
-  		if m_valid2(lookup, currentWeapon) then
-
-  			local lc = lookup[currentWeapon]
-  			local wpn = lc.name
-
-			if interface.get(multicfg_bywpn) then
-				if lc.type == "pistol" then wpn = "Pistols"
-				elseif lc.type == "smg" then wpn = "SMGs"
-				elseif lc.type == "rifle" then wpn = "Rifles"
-				elseif lc.type == "shotgun" then wpn = "Shotguns"
-				elseif lc.type == "sniper" then wpn = "Snipers"
-				elseif lc.type == "heavy" then wpn = "Heavys" end
-
-				if interface.get(multicfg_divisor) and m_valid(dv_wpn, lc.sname) then
-					wpn = lc.name
-				end
-			end
-
-			-- Actions
-			if not m_valid(bad_wpn, lc.type) and (m_valid(interface.get(multicfg_wpns), lc.name) or interface.get(multicfg_bywpn)) then
-
-				if curWeapon ~= nil then 
-					m_vis(wpn_info[curWeapon], false)
-				end
-
-				m_vis(wpn_info[wpn], true)
-				m_hook(wpn_info[wpn], interface.get(wpn_info[wpn].active))
-
-				cp = wpn
-				curWeapon = wpn
-
-			elseif curWeapon ~= nil then 
-				m_vis(wpn_info[curWeapon], false)
-			end
-  		end
-  	end
-end
-
 local function Visible()
-	local active = interface.get(multicfg_active)
-	local bywpn = interface.get(multicfg_bywpn)
-	local wpns = interface.get(multicfg_wpns)
+	local active = ui_get(multicfg_active)
+	local bywpn = ui_get(multicfg_bywpn)
 
-	interface.visible(multicfg_bywpn, active)
-	interface.visible(multicfg_wpns, active and not bywpn)
-	interface.visible(multicfg_divisor, bywpn)
+	ui_visible(multicfg_ignore_menu, active)
+	ui_visible(multicfg_bywpn, active)
+	ui_visible(multicfg_wpns, active and not bywpn)
+	ui_visible(multicfg_divisor, bywpn)
 
-	if curWeapon ~= nil then 
-		m_vis(wpn_info[curWeapon], active)
+	if current_weapon ~= nil then 
+		m_vis(wpn_info[current_weapon], active)
 	end
 end
 
@@ -363,4 +273,57 @@ m_HookWpns()
 Visible()
 ui.set_callback(multicfg_active, Visible)
 ui.set_callback(multicfg_bywpn, Visible)
-client.set_event_callback("run_command", run_cmd)
+
+client.set_event_callback("run_command", function(e)
+	local g_LocalPlayer = entity.get_local_player()
+	if not ui_get(multicfg_active) or not entity.is_alive(g_LocalPlayer) then
+		return
+	end
+
+	local m_hActiveWeapon = entity.get_prop(g_LocalPlayer, "m_hActiveWeapon")
+  	local m_iItem = bit.band(entity.get_prop(m_hActiveWeapon, "m_iItemDefinitionIndex"), 0xFFFF)
+
+  	if m_iItem == 11 then -- Autosniper checks
+  		m_iItem = 38
+  	end
+
+  	if old_weapon ~= m_iItem then
+  		old_weapon = m_iItem
+		if m_valid(lookup, old_weapon, true) then
+
+			if not ui_get(multicfg_ignore_menu) and ui.is_menu_open() then
+				return
+			end
+
+			local lc = lookup[old_weapon]
+			local wpn = lc.name
+
+			if ui_get(multicfg_bywpn) then
+				if lc.type == "pistol" then wpn = "Pistols"
+				elseif lc.type == "smg" then wpn = "SMGs"
+				elseif lc.type == "rifle" then wpn = "Rifles"
+				elseif lc.type == "shotgun" then wpn = "Shotguns"
+				elseif lc.type == "sniper" then wpn = "Snipers"
+				elseif lc.type == "heavy" then wpn = "Heavys" end
+
+				if ui_get(multicfg_divisor) and m_valid(dv_wpn, lc.sname) then
+					wpn = lc.name
+				end
+			end
+
+			-- Actions
+			-- Validate bad weapon list
+			if not m_valid(bad_wpn, lc.type) and (m_valid(ui_get(multicfg_wpns), lc.name) or ui_get(multicfg_bywpn)) then
+				if current_weapon ~= nil then 
+					m_vis(wpn_info[current_weapon], false)
+				end
+
+				m_vis(wpn_info[wpn], true)
+				m_hook(wpn_info[wpn], ui_get(wpn_info[wpn].active))
+				current_weapon = wpn
+			elseif current_weapon ~= nil then 
+				m_vis(wpn_info[current_weapon], false)
+			end
+		end
+  	end
+end)
