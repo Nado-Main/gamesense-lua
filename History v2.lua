@@ -109,8 +109,8 @@ client.set_event_callback("aim_fire", function(m)
         end
 
         if ui_get(Elements.hitboxes) then
-            local r, g, b, a = 17, 128, 106, 130
-            if m.backtrack > 0 then r, g, b, a = 89, 116, 204, 130 end
+            local r, g, b, a = 124, 195, 13, 150
+            if m.backtrack > 0 then r, g, b, a = 89, 116, 204, 150 end
             if m.high_priority then r, g, b, a = 255, 0, 0, 200 end
 
             client.draw_hitboxes(m.target, ui_get(Elements.hitboxes_time), 19, r, g, b, a, m.backtrack)
