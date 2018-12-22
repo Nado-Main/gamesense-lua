@@ -109,7 +109,7 @@ client.set_event_callback("aim_fire", function(m)
         end
 
         if ui_get(Elements.hitboxes) then
-            local r, g, b, a = 124, 195, 13, 130
+            local r, g, b, a = 17, 128, 106, 130
             if m.backtrack > 0 then r, g, b, a = 89, 116, 204, 130 end
             if m.high_priority then r, g, b, a = 255, 0, 0, 200 end
 
