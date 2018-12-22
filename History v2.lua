@@ -8,6 +8,8 @@ local aim_table, shot_state = { }, { }
 local Elements = {
     is_active = ui.new_checkbox("MISC", "Settings", "Aim bot logging"),
     palette = ui.new_color_picker("MISC", "Settings", "Logging picker", 16, 22, 29, 160),
+    hitboxes = ui.new_checkbox("MISC", "Settings", "Lag compensated hitboxes"),
+    hitboxes_time = ui.new_slider("MISC", "Settings", "Duration", 1, 20, 3, true, "s"),
 
     table_size = ui.new_slider("MISC", "Settings", "Maximum amount", 2, 10, 5),
     size_x = ui.new_slider("MISC", "Settings", "X Axis", 1, width, 90, true, "px"),
@@ -40,7 +42,7 @@ end
 local function hook_aim_event(status, m)
 	if not ui_get(Elements.is_active) then
 		return
-	end
+    end
 
     if status == "aim_hit" then
         shot_state[m.id]["got"] = true
@@ -104,6 +106,14 @@ client.set_event_callback("aim_fire", function(m)
         else
             lagcomp = 1
             LC = backtrack .. " Ticks"
+        end
+
+        if ui_get(Elements.hitboxes) then
+            local r, g, b, a = 124, 195, 13, 130
+            if m.backtrack > 0 then r, g, b, a = 89, 116, 204, 130 end
+            if m.high_priority then r, g, b, a = 255, 0, 0, 200 end
+
+            client.draw_hitboxes(m.target, 2, 19, r, g, b, a, m.backtrack)
         end
 
         aim_table[1] = { 
@@ -207,6 +217,11 @@ end)
 
 local function visibility()
     local rpc = ui_get(Elements.is_active)
+    local hpc = ui_get(Elements.hitboxes)
+
+    ui.set_visible(Elements.hitboxes, rpc)
+    ui.set_visible(Elements.hitboxes_time, rpc and hpc)
+
     ui.set_visible(Elements.table_size, rpc)
     ui.set_visible(Elements.size_x, rpc)
     ui.set_visible(Elements.size_y, rpc)
@@ -214,3 +229,4 @@ end
 
 visibility()
 ui.set_callback(Elements.is_active, visibility)
+ui.set_callback(Elements.hitboxes, visibility)
