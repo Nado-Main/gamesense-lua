@@ -152,12 +152,13 @@ function get_near_target()
 end
 
 client.set_event_callback("paint", function(c)
-    update_bind_state()
-    menu_listener()
     if not ui_get(menu.is_active) then
         return
     end
 
+    menu_listener()
+    update_bind_state()
+    
     local is_targeting, angle = false, nil
 
     if isLeft then yaw_deg, jit_deg = 47, 90 end
