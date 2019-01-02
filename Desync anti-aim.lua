@@ -161,8 +161,8 @@ client.set_event_callback("paint", function(c)
     
     local is_targeting, angle = false, nil
 
-    if isLeft then yaw_deg, jit_deg = 47, 90 end
-    if isRight then yaw_deg, jit_deg = -150, 99 end
+    if isLeft then yaw_deg, jit_deg = 154, -115 end
+    if isRight then yaw_deg, jit_deg = -49, -97 end
 
     g_pLocal = entity.get_local_player()
     local threat_id, threat_dist = get_near_target()
@@ -175,9 +175,9 @@ client.set_event_callback("paint", function(c)
             angle = calc_angle(x, y, z, ent_x, ent_y, ent_z) + 180
 
             if isLeft then
-                angle = angle - 130
+                angle = angle - 28
             elseif isRight then
-                angle = angle + 31
+                angle = angle + 128
             end
 
             ui_set(aa_yaw, "Static")
