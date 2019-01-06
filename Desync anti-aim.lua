@@ -17,7 +17,6 @@ local aa_yaw, aa_num = ui.reference("AA", "Anti-aimbot angles", "Yaw")
 local aa_jitter, aa_jitter_range = ui.reference("AA", "Anti-aimbot angles", "Yaw jitter")
 local aa_run = ui.reference("AA", "Anti-aimbot angles", "Yaw while running")
 local aa_fake, aa_fake_num = ui.reference("AA", "Anti-aimbot angles", "Fake yaw")
-local aa_update = ui.reference("AA", "Anti-aimbot angles", "Always update fake yaw")
 
 local isLeft, isRight, n = false, false, 0
 local lstate, rstate = ui_get(menu.left), ui_get(menu.right)
@@ -161,8 +160,8 @@ client.set_event_callback("paint", function(c)
     
     local is_targeting, angle = false, nil
 
-    if isLeft then yaw_deg, jit_deg = 154, -115 end
-    if isRight then yaw_deg, jit_deg = -49, -97 end
+    if isLeft then yaw_deg, jit_deg = 47, 90 end
+    if isRight then yaw_deg, jit_deg = -150, 99 end
 
     g_pLocal = entity.get_local_player()
     local threat_id, threat_dist = get_near_target()
@@ -175,9 +174,9 @@ client.set_event_callback("paint", function(c)
             angle = calc_angle(x, y, z, ent_x, ent_y, ent_z) + 180
 
             if isLeft then
-                angle = angle - 28
+                angle = angle - 130
             elseif isRight then
-                angle = angle + 128
+                angle = angle + 31
             end
 
             ui_set(aa_yaw, "Static")
@@ -203,7 +202,6 @@ client.set_event_callback("paint", function(c)
         ui_set(aa_jitter_range, jit_deg)
         ui_set(aa_run, "Off")
         ui_set(aa_fake, "Crooked")
-        ui_set(aa_update, true)
     else
         if is_targeting and angle ~= nil then
             ui_set(aa_yaw, "Static")
@@ -218,7 +216,6 @@ client.set_event_callback("paint", function(c)
         ui_set(aa_run, "Off")
         ui_set(aa_fake, "180")
         ui_set(aa_fake_num, -25)
-        ui_set(aa_update, true)
     end
 
     if  not entity.is_alive(g_pLocal) or #ui_get(menu.arrows) == 0 then 
@@ -283,7 +280,6 @@ function menu_listener(data)
     ui.set_visible(aa_jitter, not (rpc and hpc))
     ui.set_visible(aa_jitter_range, not (rpc and hpc))
     ui.set_visible(aa_run, not (rpc and hpc))
-    ui.set_visible(aa_update, not (rpc and hpc))
     ui.set_visible(aa_fake, not (rpc and hpc))
     ui.set_visible(aa_fake_num, not (rpc and hpc))
 end
