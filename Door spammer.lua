@@ -51,7 +51,9 @@ function callback(name, cmd)
         end
     }
 
-    listener[name](cmd)
+    if listener[name] then
+        listener[name](cmd)
+    end
 end
 
 menu_listener()
