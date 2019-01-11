@@ -25,11 +25,12 @@ function callback(name, cmd)
         return
     end
 
-    cmd_num = ui.get(hotkey) and cmd_num + 1 or 0
     local g_local = entity.get_local_player()
 
     listener = {
         ["setup_command"] = function(cmd)
+            cmd_num = ui.get(hotkey) and cmd_num + 1 or 0
+
             if cmd_num > 3 then
                 cmd_tick = globals.tickcount()
                 if cmd_tick - cmd_last_command > 0 then
