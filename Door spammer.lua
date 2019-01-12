@@ -15,12 +15,12 @@ ui.set_callback(active, menu_listener)
 function hook_listener(data)
     for i = 1, #data do
         client.set_event_callback(data[i], function(c) 
-            callback(data[i], c)
+            pcallback(data[i], c)
         end)
     end
 end
 
-function callback(name, cmd)
+function pcallback(name, cmd)
     if not ui.get(active) then
         return
     end
