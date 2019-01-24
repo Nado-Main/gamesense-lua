@@ -31,7 +31,7 @@ local menu = {
     end)
 }
 
-function callback(status, m)
+local function callback(status, m)
 	if not ui_get(menu.is_active) then
 		return
     end
@@ -70,11 +70,11 @@ function callback(status, m)
     end
 end
 
-function TicksTime(tick)
+local function TicksTime(tick)
     return globals.tickinterval() * tick
 end
 
-function get_server_rate(f)
+local function get_server_rate(f)
     local tickrate = 64
     local cmdrate = client.get_cvar("cl_cmdrate") or 64
     local updaterate = client.get_cvar("cl_updaterate") or 64
@@ -131,7 +131,7 @@ client.set_event_callback("aim_fire", function(m)
     end
 end)
 
-function drawTable(c, count, x, y, data)
+local function drawTable(c, count, x, y, data)
     if data then
         local y = y + 4
         local pitch = x + 10
@@ -218,7 +218,7 @@ client.set_event_callback("paint", function(c)
     end
 end)
 
-function hook_listener(data)
+local function hook_listener(data)
     for i = 1, #data, 1 do
         client.set_event_callback(data[i], function(c) 
             callback(data[i], c)
@@ -226,7 +226,7 @@ function hook_listener(data)
     end
 end
 
-function menu_listener(data)
+local function menu_listener(data)
     if type(data) == "table" then
         for i = 1, #data, 1 do
             ui.set_callback(menu[data[i]], menu_listener)

@@ -12,7 +12,7 @@ local cmd_tick, cmd_num = 0, 0
 local cmd_last_command = globals.tickcount()
 ui.set_callback(active, menu_listener)
 
-function hook_listener(data)
+local function hook_listener(data)
     for i = 1, #data do
         client.set_event_callback(data[i], function(c) 
             pcallback(data[i], c)
@@ -20,7 +20,7 @@ function hook_listener(data)
     end
 end
 
-function pcallback(name, cmd)
+local function pcallback(name, cmd)
     if not ui.get(active) then
         return
     end

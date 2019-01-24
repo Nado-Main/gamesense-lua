@@ -21,7 +21,7 @@ local aa_fake, aa_fake_num = ui.reference("AA", "Anti-aimbot angles", "Fake yaw"
 local isLeft, isRight, n = false, false, 0
 local lstate, rstate = ui_get(menu.left), ui_get(menu.right)
 
-function update_bind_state()
+local function update_bind_state()
     ui_set(menu.left, "Toggle")
     ui_set(menu.right, "Toggle")
 
@@ -42,7 +42,7 @@ function update_bind_state()
     end
 end
 
-function table_state(tab, val)
+local function table_state(tab, val)
     for index, value in ipairs(tab) do
         if value == val then
             return true
@@ -52,12 +52,12 @@ function table_state(tab, val)
     return false
 end
 
-function round(num, numDecimalPlaces)
+local function round(num, numDecimalPlaces)
     local mult = 10^(numDecimalPlaces or 0)
     return math.floor(num * mult + 0.5) / mult
   end
 
-function is_thirdperson(c)
+  local function is_thirdperson(c)
 	local x, y, z = client.eye_position()
 	local pitch, yaw = client.camera_angles()
 	
@@ -72,7 +72,7 @@ function is_thirdperson(c)
 	return wx ~= nil
 end
 
-function draw_angle(c, name, distance, location_x, location_y, location_z, origin_x, origin_y, yaw, r, g, b, a)
+local function draw_angle(c, name, distance, location_x, location_y, location_z, origin_x, origin_y, yaw, r, g, b, a)
 	local location_x_angle = location_x + math.cos(math.rad(yaw)) * distance
 	local location_y_angle = location_y + math.sin(math.rad(yaw)) * distance
 
@@ -84,7 +84,7 @@ function draw_angle(c, name, distance, location_x, location_y, location_z, origi
 	end
 end
 
-function calc_angle(x_src, y_src, z_src, x_dst, y_dst, z_dst)
+local function calc_angle(x_src, y_src, z_src, x_dst, y_dst, z_dst)
     x_delta = x_src - x_dst
     y_delta = y_src - y_dst
     z_delta = z_src - z_dst
@@ -101,7 +101,7 @@ function calc_angle(x_src, y_src, z_src, x_dst, y_dst, z_dst)
     return y
 end
 
-function normalize_angles(angle)
+local function normalize_angles(angle)
     angle = angle % 360 
     angle = (angle + 360) % 360
     if (angle > 180)  then
@@ -111,7 +111,7 @@ function normalize_angles(angle)
     return angle
 end
 
-function get_near_target()
+local function get_near_target()
 	local enemy_players = entity.get_players(true)
 	if #enemy_players ~= 0 then
 		local own_x, own_y, own_z = client.eye_position()
@@ -254,7 +254,7 @@ client.set_event_callback("paint", function(c)
     end
 end)
 
-function menu_listener(data)
+local function menu_listener(data)
     if type(data) == "table" then
         for i = 1, #data, 1 do
             ui.set_callback(menu[data[i]], menu_listener)
