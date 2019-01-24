@@ -150,6 +150,36 @@ local function get_near_target()
 	return nil, nil
 end
 
+local function menu_listener(data)
+    if type(data) == "table" then
+        for i = 1, #data, 1 do
+            ui.set_callback(menu[data[i]], menu_listener)
+        end
+        return
+    end
+
+    local rpc = ui_get(menu.is_active)
+    local hpc = ui_get(menu.hide_elems)
+    local nhp = ui_get(menu.arrows)
+
+    ui.set_visible(menu.threat, rpc)
+    ui.set_visible(menu.hide_elems, rpc)
+    ui.set_visible(menu.arrows, rpc)
+    ui.set_visible(menu.picker, rpc)
+
+    ui.set_visible(menu.left, rpc)
+    ui.set_visible(menu.right, rpc)
+
+    -- Hide menu
+    ui.set_visible(aa_yaw, not (rpc and hpc))
+    ui.set_visible(aa_num, not (rpc and hpc))
+    ui.set_visible(aa_jitter, not (rpc and hpc))
+    ui.set_visible(aa_jitter_range, not (rpc and hpc))
+    ui.set_visible(aa_run, not (rpc and hpc))
+    ui.set_visible(aa_fake, not (rpc and hpc))
+    ui.set_visible(aa_fake_num, not (rpc and hpc))
+end
+
 client.set_event_callback("paint", function(c)
     if not ui_get(menu.is_active) then
         return
@@ -253,36 +283,6 @@ client.set_event_callback("paint", function(c)
         end
     end
 end)
-
-local function menu_listener(data)
-    if type(data) == "table" then
-        for i = 1, #data, 1 do
-            ui.set_callback(menu[data[i]], menu_listener)
-        end
-        return
-    end
-
-    local rpc = ui_get(menu.is_active)
-    local hpc = ui_get(menu.hide_elems)
-    local nhp = ui_get(menu.arrows)
-
-    ui.set_visible(menu.threat, rpc)
-    ui.set_visible(menu.hide_elems, rpc)
-    ui.set_visible(menu.arrows, rpc)
-    ui.set_visible(menu.picker, rpc)
-
-    ui.set_visible(menu.left, rpc)
-    ui.set_visible(menu.right, rpc)
-
-    -- Hide menu
-    ui.set_visible(aa_yaw, not (rpc and hpc))
-    ui.set_visible(aa_num, not (rpc and hpc))
-    ui.set_visible(aa_jitter, not (rpc and hpc))
-    ui.set_visible(aa_jitter_range, not (rpc and hpc))
-    ui.set_visible(aa_run, not (rpc and hpc))
-    ui.set_visible(aa_fake, not (rpc and hpc))
-    ui.set_visible(aa_fake_num, not (rpc and hpc))
-end
 
 menu_listener({ "is_active", "hide_elems", "arrows" })
 -- desync aa by Salvatore (idea by LcaL)
