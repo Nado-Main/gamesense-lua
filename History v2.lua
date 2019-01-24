@@ -15,6 +15,14 @@ local menu = {
     size_y = ui.new_slider("MISC", "Settings", "Y Axis", 1, height, 400, true, "px"),
 
     hitboxes = ui.new_checkbox("MISC", "Settings", "Lag compensated hitboxes"),
+    hp_default = ui.new_color_picker("MISC", "Settings", "Target picker", 90, 227, 25, 150),
+
+    h_backtrack = ui.new_checkbox("MISC", "Settings", "Backtrack hitboxes"),
+    hp_backtrack = ui.new_color_picker("MISC", "Settings", "Backtrack picker", 89, 116, 204, 150),
+
+    h_hp = ui.new_checkbox("MISC", "Settings", "High priority hitboxes"),
+    hp_picker = ui.new_color_picker("MISC", "Settings", "High priority picker", 255, 0, 0, 150),
+
     hitboxes_time = ui.new_slider("MISC", "Settings", "Duration", 1, 20, 3, true, "s"),
 
     resolver_state = ui.reference("RAGE", "Other", "Anti-aim correction"),
@@ -63,7 +71,7 @@ function callback(status, m)
 end
 
 function TicksTime(tick)
-    return globals.tickinterval() * 32
+    return globals.tickinterval() * tick
 end
 
 function get_server_rate(f)
@@ -115,9 +123,9 @@ client.set_event_callback("aim_fire", function(m)
     end
 
     if ui_get(menu.hitboxes) then
-        local r, g, b, a = 90, 227, 25, 150
-        if m.backtrack > 0 then r, g, b, a = 89, 116, 204, 150 end
-        if m.high_priority then r, g, b, a = 255, 0, 0, 150 end
+        local r, g, b, a = ui_get(menu.hp_default)
+        if ui_get(menu.h_backtrack) and m.backtrack > 0 then r, g, b, a = ui_get(menu.hp_backtrack) end
+        if ui_get(menu.h_hp) and m.high_priority then r, g, b, a = ui_get(menu.hp_picker) end
 
         client.draw_hitboxes(m.target, ui_get(menu.hitboxes_time), 19, r, g, b, a, m.backtrack)
     end
@@ -232,6 +240,10 @@ function menu_listener(data)
     ui.set_visible(menu.size_x, rpc)
     ui.set_visible(menu.size_y, rpc)
 
+    ui.set_visible(menu.h_backtrack, ui_get(menu.hitboxes))
+    ui.set_visible(menu.hp_backtrack, ui_get(menu.hitboxes))
+    ui.set_visible(menu.h_hp, ui_get(menu.hitboxes))
+    ui.set_visible(menu.hp_picker, ui_get(menu.hitboxes))
     ui.set_visible(menu.hitboxes_time, ui_get(menu.hitboxes))
 end
 
