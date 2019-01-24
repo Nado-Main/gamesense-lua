@@ -10,7 +10,6 @@ local round = function(num, dec) return tonumber(string.format("%." .. (dec or 0
 
 local cmd_tick, cmd_num = 0, 0
 local cmd_last_command = globals.tickcount()
-ui.set_callback(active, menu_listener)
 
 local function pcallback(name, cmd)
     if not ui.get(active) then
@@ -59,3 +58,5 @@ end
 
 menu_listener()
 hook_listener({ "setup_command", "paint" })
+
+ui.set_callback(active, menu_listener)
