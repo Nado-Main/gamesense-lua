@@ -4,7 +4,7 @@ local ref, ref_color = ui.reference("Visuals", "Colored models", "Local fake sha
 local menu = {
     active = ui.new_checkbox("Visuals", "Colored models", "Shadow pulsating"),
     max_alpha = ui.new_slider("Visuals", "Colored models", "Maximum shadow alpha", 25, 255, 175, true),
-    threhsold = ui.new_slider("Visuals", "Colored models", "Alpha threhsold", 0, 100, 25, false),
+    threshold = ui.new_slider("Visuals", "Colored models", "Alpha threshold", 0, 100, 25, false),
 }
 
 local act = 1
@@ -63,15 +63,15 @@ client.set_event_callback("paint", function(c)
 
     local r, g, b, a = ui.get(ref_color)
     local max_alpha = ui.get(menu.max_alpha)
-    local threhsold = ui.get(menu.threhsold)
+    local threshold = ui.get(menu.threshold)
 
     local cur_fps = get_fps()
     local max_fps = cur_fps > 300 and cur_fps or 300
     
     local factor = max_fps / cur_fps
 
-    if alpha > max_alpha + threhsold then act = -factor end
-    if alpha < -threhsold then act = factor end
+    if alpha > max_alpha + threshold then act = -factor end
+    if alpha < -threshold then act = factor end
 
     alpha = alpha + act
 
@@ -94,7 +94,7 @@ local function menu_listener(data)
 
     local is_active = ui.get(menu.active)
     ui.set_visible(menu.max_alpha, is_active)
-    ui.set_visible(menu.threhsold, is_active)
+    ui.set_visible(menu.threshold, is_active)
 end
 
 menu_listener({ "active", "max_alpha" })
