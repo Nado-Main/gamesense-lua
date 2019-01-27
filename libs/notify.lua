@@ -1,8 +1,9 @@
 local notify = {}
 notify.__index = notify
+notify.__frametimes = { }
 
--- Green 150, 185, 1
--- Red 255, 24, 24
+notify.fps_prev = 0
+notify.last_update_time = 0
 
 notify.invoke_callback = function(timeout)
     return setmetatable({
@@ -99,6 +100,47 @@ function notify:start(timeout)
     self.delay = globals.realtime() + timeout
 end
 
+function notify:get_fps()
+    local rt, ft = globals.realtime(), globals.absoluteframetime()
+
+    if ft > 0 then
+        table.insert(self.__frametimes, 1, ft)
+    end
+
+    local count = #self.__frametimes
+    if count == 0 then
+        return 0
+    end
+
+    local accum = 0
+    local i = 0
+    while accum < 0.5 do
+        i = i + 1
+        accum = accum + self.__frametimes[i]
+        if i >= count then
+            break
+        end
+    end
+    
+    accum = accum / i
+    
+    while i < count do
+        i = i + 1
+        table.remove(self.__frametimes)
+    end
+    
+    local fps = 1 / accum
+    local time_since_update = rt - self.last_update_time
+    if math.abs(fps - self.fps_prev) > 4 or time_since_update > 1 then
+        self.fps_prev = fps
+        self.last_update_time = rt
+    else
+        fps = self.fps_prev
+    end
+    
+    return math.floor(fps + 0.5)
+end
+
 function notify:get_text_size(lines_combo)
     local x_offset_text = 0
 
@@ -146,16 +188,21 @@ function notify:show(count, color, text)
     local text_w, text_h = self:get_text_size(text)
     
     local max_width = text_w 
-    local max_width = max_width < 150 and 150 or max_width 
+    local max_width = max_width < 150 and 150 or max_width
+
+    --local current_fps = self:get_fps()
 
     if color == nil then color = self.color end
+    
+    local factor = 0.05 - (-150 + self:get_fps()) / 1000
+    local factor = factor < 0 and 0.02 or factor
 
     if globals.realtime() < self.delay then
-        if self.laycoffset < max_width then self.laycoffset = self.laycoffset + (max_width - self.laycoffset) * 0.05 end
+        if self.laycoffset < max_width then self.laycoffset = self.laycoffset + (max_width - self.laycoffset) * 0.11 end
         if self.laycoffset > max_width then self.laycoffset = max_width end
         if self.laycoffset > max_width / 1.09 then
             if self.layboffset < max_width - 6 then
-                self.layboffset = self.layboffset + ((max_width - 6) - self.layboffset) * 0.05
+                self.layboffset = self.layboffset + ((max_width - 6) - self.layboffset) * factor
             end
         end
 
@@ -164,11 +211,11 @@ function notify:show(count, color, text)
         end
     else
         if self.layboffset > -11 then
-            self.layboffset = self.layboffset - (((max_width-5)-self.layboffset) * 0.05) + 0.01
+            self.layboffset = self.layboffset - (((max_width-5)-self.layboffset) * factor) + 0.01
         end
 
         if self.layboffset < (max_width - 11) and self.laycoffset >= 0 then
-            self.laycoffset = self.laycoffset - (((max_width + 1) - self.laycoffset) * 0.05) + 0.01
+            self.laycoffset = self.laycoffset - (((max_width + 1) - self.laycoffset) * factor) + 0.01
         end
 
         if self.laycoffset < 0 then 
