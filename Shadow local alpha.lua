@@ -21,7 +21,7 @@ client.set_event_callback("paint", function(c)
     local max_alpha = ui.get(menu.max_alpha)
     local threshold = ui.get(menu.threshold)
 
-    local factor = 255 / (ui.get(menu.speed) / 100) * globals.frametime()
+    local factor = 255 / ((100 - ui.get(menu.speed)) / 100) * globals.frametime()
 
     if alpha > max_alpha + threshold then act = -factor end
     if alpha < -threshold then act = factor end
