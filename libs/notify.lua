@@ -149,13 +149,14 @@ function notify:show(count, color, text)
     local max_width = max_width < 150 and 150 or max_width 
 
     if color == nil then color = self.color end
+    local factor = 255 / 25 * globals.frametime()
 
     if globals.realtime() < self.delay then
-        if self.laycoffset < max_width then self.laycoffset = self.laycoffset + (max_width - self.laycoffset) * 0.05 end
+        if self.laycoffset < max_width then self.laycoffset = self.laycoffset + (max_width - self.laycoffset) * factor end
         if self.laycoffset > max_width then self.laycoffset = max_width end
         if self.laycoffset > max_width / 1.09 then
             if self.layboffset < max_width - 6 then
-                self.layboffset = self.layboffset + ((max_width - 6) - self.layboffset) * 0.05
+                self.layboffset = self.layboffset + ((max_width - 6) - self.layboffset) * factor
             end
         end
 
@@ -164,11 +165,11 @@ function notify:show(count, color, text)
         end
     else
         if self.layboffset > -11 then
-            self.layboffset = self.layboffset - (((max_width-5)-self.layboffset) * 0.05) + 0.01
+            self.layboffset = self.layboffset - (((max_width-5)-self.layboffset) * factor) + 0.01
         end
 
         if self.layboffset < (max_width - 11) and self.laycoffset >= 0 then
-            self.laycoffset = self.laycoffset - (((max_width + 1) - self.laycoffset) * 0.05) + 0.01
+            self.laycoffset = self.laycoffset - (((max_width + 1) - self.laycoffset) * factor) + 0.01
         end
 
         if self.laycoffset < 0 then 
@@ -194,13 +195,14 @@ function notify:show_right(count, color, text)
     local max_width = max_width < 150 and 150 or max_width 
 
     if color == nil then color = self.color end
+    local factor = 255 / 25 * globals.frametime()
 
     if globals.realtime() < self.delay then
-        if self.laycoffset < max_width then self.laycoffset = self.laycoffset + (max_width - self.laycoffset) * 0.05 end
+        if self.laycoffset < max_width then self.laycoffset = self.laycoffset + (max_width - self.laycoffset) * factor end
         if self.laycoffset > max_width then self.laycoffset = max_width end
         if self.laycoffset > max_width / 1.09 then
             if self.layboffset < max_width - 6 then
-                self.layboffset = self.layboffset + ((max_width - 6) - self.layboffset) * 0.05
+                self.layboffset = self.layboffset + ((max_width - 6) - self.layboffset) * factor
             end
         end
 
@@ -209,11 +211,11 @@ function notify:show_right(count, color, text)
         end
     else
         if self.layboffset > 0 then
-            self.layboffset = self.layboffset - (((max_width-5)-self.layboffset) * 0.05) + 0.01
+            self.layboffset = self.layboffset - (((max_width-5)-self.layboffset) * factor) + 0.01
         end
 
         if self.layboffset < (max_width - 11) and self.laycoffset >= 0 then
-            self.laycoffset = self.laycoffset - (((max_width + 1) - self.laycoffset) * 0.05) + 0.01
+            self.laycoffset = self.laycoffset - (((max_width + 1) - self.laycoffset) * factor) + 0.01
         end
 
         if self.laycoffset < 0 then 
