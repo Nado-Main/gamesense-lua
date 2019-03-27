@@ -10,9 +10,9 @@ local menu = {
     is_active = ui.new_checkbox("MISC", "Settings", "Aim bot logging"),
     palette = ui.new_color_picker("MISC", "Settings", "Logging picker", 16, 22, 29, 160),
 
-    table_size = ui.new_slider("MISC", "Settings", "Maximum amount", 2, 10, 5),
-    size_x = ui.new_slider("MISC", "Settings", "X Axis", 1, width, 90, true, "px"),
-    size_y = ui.new_slider("MISC", "Settings", "Y Axis", 1, height, 400, true, "px"),
+    table_size = ui.new_slider("MISC", "Settings", "Maximum amount", 2, 10, 6),
+    size_x = ui.new_slider("MISC", "Settings", "X Axis", 1, width, 95, true, "px"),
+    size_y = ui.new_slider("MISC", "Settings", "Y Axis", 1, height, 450, true, "px"),
 
     hitboxes = ui.new_checkbox("MISC", "Settings", "Lag compensated hitboxes"),
     hp_default = ui.new_color_picker("MISC", "Settings", "Target picker", 90, 227, 25, 150),
@@ -36,31 +36,11 @@ local function callback(status, m)
 		return
     end
 
-    if status == "bullet_impact" then
-        local g_Local = entity.get_local_player()
-        local g_EntID = client.userid_to_entindex(m.userid)
-
-        if g_Local == g_EntID and last_tick ~= globals.tickcount() then
-            local m_valid = {}
-            for n, _ in pairs(shot_state) do
-                if not shot_state[n]["got"] and shot_state[n]["time"] > globals.curtime() then
-                    m_valid[#m_valid + 1] = { ["id"] = n, ["data"] = shot_state[n] }
-                end
-            end
-    
-            if #m_valid > 0 then
-                for i = 10, 2, -1 do m_valid[i] = m_valid[i-1] end
-                for i = #m_valid, 1, -1 do
-                    shot_state[m_valid[i].id]["got"] = true
-                end
-            end
-    
-            last_tick = globals.tickcount()
-        end
-        return
+    if status == "aim_hit" then shot_state[m.id]["got"] = true end
+    if status == "aim_miss" and m.reason ~= "death" then 
+        shot_state[m.id]["got"] = true
     end
 
-    if status == "aim_hit" then shot_state[m.id]["got"] = true end
     if shot_state[m.id] and shot_state[m.id]["got"] then
         for n, _ in pairs(aim_table) do
             if aim_table[n].id == m.id then
@@ -68,10 +48,6 @@ local function callback(status, m)
             end
         end
     end
-end
-
-local function TicksTime(tick)
-    return globals.tickinterval() * tick
 end
 
 local function get_server_rate(f)
@@ -91,7 +67,6 @@ end
 client.set_event_callback("aim_fire", function(m)
     if ui_get(menu.is_active) then
         local lagcomp, LC = 0, "-"
-        local nick = entity.get_player_name(m.target)
         local backtrack = get_server_rate(m.backtrack)
 
         if m.teleported then
@@ -105,20 +80,28 @@ client.set_event_callback("aim_fire", function(m)
             LC = backtrack .. " Ticks"
         end
 
+        local flags = {
+            m.teleported and 'T' or '',
+            m.interpolated and 'I' or '',
+            m.extrapolated and 'E' or '',
+            m.boosted and 'B' or '',
+            m.high_priority and 'H' or ''
+        }
+
         for i = 10, 2, -1 do 
             aim_table[i] = aim_table[i-1]
         end
 
         aim_table[1] = { 
             ["id"] = m.id, ["hit"] = not ui.get(menu.resolver_state) and "aim_unknown" or 0, 
-            ["player"] = string.sub(nick, 0, 14),
+            ["player"] = string.sub(entity.get_player_name(m.target), 0, 14),
             ["dmg"] = m.damage, ["lc"] = LC, ["lagcomp"] = lagcomp,
-            ["pri"] = (m.high_priority and "High" or "Normal")
+            ["flags"] = table.concat(flags)
         }
 
         shot_state[m.id] = { 
             ["hit"] = false,
-            ["time"] = globals.curtime() + TicksTime(32) + client.latency()
+            ["time"] = globals.curtime()
         }
     end
 
@@ -159,7 +142,7 @@ local function drawTable(c, count, x, y, data)
         draw_text(c, pitch - 3, yaw + 1, 255, 255, 255, 255, nil, 70, data.id)
         draw_text(c, pitch + 23, yaw + 1, 255, 255, 255, 255, nil, 70, data.player)
         draw_text(c, pitch + 106, yaw + 1, 255, 255, 255, 255, nil, 70, data.dmg)
-        draw_text(c, pitch + 137, yaw + 1, 255, 255, 255, 255, nil, 70, data.pri)
+        draw_text(c, pitch + 137, yaw + 1, 255, 255, 255, 255, nil, 70, data.flags)
         draw_text(c, pitch + 183, yaw + 1, clx[lagcomp][1], clx[lagcomp][2], clx[lagcomp][3], 255, nil, 70, data.lc)
 
         return (count + 1)
@@ -209,7 +192,7 @@ client.set_event_callback("paint", function(c)
     draw_text(c, x + 10, y + 8, 255, 255, 255, 255, "-c", 70, "ID")
     draw_text(c, x + 10 + 35, y + 8, 255, 255, 255, 255, "-c", 70, "PLAYER")
     draw_text(c, x + 10 + 114, y + 8, 255, 255, 255, 255, "-c", 70, "DMG")
-    draw_text(c, x + 10 + 153, y + 8, 255, 255, 255, 255, "-c", 70, "PRIORITY")
+    draw_text(c, x + 10 + 148, y + 8, 255, 255, 255, 255, "-c", 70, "FLAGS")
     draw_text(c, x + 10 + 201, y + 8, 255, 255, 255, 255, "-c", 70, "LAG COMP")
 
     -- Drawing table
@@ -248,4 +231,4 @@ local function menu_listener(data)
 end
 
 menu_listener({ "is_active", "hitboxes" })
-hook_listener({ "aim_hit", "aim_miss", "bullet_impact" })
+hook_listener({ "aim_hit", "aim_miss" })
