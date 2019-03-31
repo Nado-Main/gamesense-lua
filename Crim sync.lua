@@ -16,8 +16,8 @@ local flag_limit = ui.reference("AA", "Fake lag", "Limit")
 local ui_get, ui_set = ui.get, ui.set
 
 local function ui_mset(list)
-    for i = 1, #list do
-        ui_set(list[i][1], list[i][2])
+    for ref, val in pairs(list) do
+        ui_set(ref, val)
     end
 end
 
@@ -64,16 +64,16 @@ client.set_event_callback("setup_command", function(cmd)
     end
 
     ui_mset({
-        { yaw, "180" },
-        { yaw_jitter, "Off" },
-        { body, "Static" },
-        { limit, 60 },
-        { twist, true },
-        { LBY, true },
-
-        -- Body Lean
-        { yaw_num, inversed and -lean or lean },
-        { body_num, inversed and -max_desync or max_desync }
+        [yaw] = '180',
+        [yaw_jitter] = 'Off',
+        [body] = 'Static',
+        [limit] = 60,
+        [twist] = true,
+        [LBY] = true,
+    
+        -- Body lean
+        [yaw_num] = inversed and -lean or lean,
+        [body_num] = inversed and -max_desync or max_desync
     })
 
     local cmd_speed = cmd.in_duck ~= 0 and 2.941177 or 1.000001
