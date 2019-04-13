@@ -9,14 +9,14 @@ local mdmg_num = ui.new_slider("RAGE", "Other", "Override minimum damage", 0, 12
 local mdmg_key = ui.new_hotkey("RAGE", "Other", "Minimim damage hotkey")
 
 local minimum_damage = ui.reference("RAGE", "Aimbot", "Minimum damage")
-local ui_get, ui_set, draw_indicator = ui.get, ui.set, client.draw_indicator
+local ui_get, ui_set = ui.get, ui.set
 
 client.set_event_callback("paint", function(c)
     cache = cache ~= nil and cache or ui_get(minimum_damage)
 
     if ui_get(mdmg_key) then
         ui_set(minimum_damage, ui_get(mdmg_num))
-        draw_indicator(c, 255, 255, 255, 150, "DMG")
+        renderer.indicator(255, 255, 255, 150, "DMG")
     else
         if cache ~= nil then
             ui_set(minimum_damage, cache)
