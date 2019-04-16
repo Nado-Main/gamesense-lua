@@ -38,7 +38,7 @@ client.set_event_callback("net_update_end", function()
         data_old = data
     end
 
-    fire_smoke:set_material_var_flag(2, true)
+    material_fire:set_material_var_flag(2, true)
     for i=1, #material_smoke do
         material_smoke[i]:set_material_var_flag(28, true)
     end
