@@ -142,7 +142,7 @@ local ui_get, ui_set = ui.get, ui.set
 local get_local = entity.get_local_player
 local get_prop = entity.get_prop
 
-local edge_count = { [1] = 7, [2] = 12, [3] = 15, [4] = 20, [5] = 23, [6] = 28, [7] = 29 }
+local edge_count = { [1] = 7, [2] = 12, [3] = 15, [4] = 19, [5] = 23, [6] = 28, [7] = 29 }
 local names = { "Head", "Chest", "Stomach" --[[, "Arms", "Legs", "Feet" ]] }
 
 local hitscan = {
