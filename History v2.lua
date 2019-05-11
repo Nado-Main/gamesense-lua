@@ -72,7 +72,7 @@ client.set_event_callback("aim_fire", function(m)
         if m.teleported then
             lagcomp = 2
             LC = "Breaking"
-        elseif not m.teleported and backtrack < 0 then
+        elseif backtrack < 0 then
             lagcomp = 3
             LC = "Predict (" .. math.abs(backtrack) .. "t)"
         elseif backtrack ~= 0 then
@@ -84,9 +84,20 @@ client.set_event_callback("aim_fire", function(m)
             m.teleported and 'T' or '',
             m.interpolated and 'I' or '',
             m.extrapolated and 'E' or '',
-            m.boosted and 'B' or '',
             m.high_priority and 'H' or ''
+            -- m.boosted and 'B' or '',
         }
+
+        local has_flags = false
+        for i = 1, #flags do
+            if flags[i] ~= "" then
+                has_flags = true
+            end
+        end
+
+        if not has_flags then
+            flags = { '-' }
+        end
 
         for i = 10, 2, -1 do 
             aim_table[i] = aim_table[i-1]
