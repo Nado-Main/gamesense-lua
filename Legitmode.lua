@@ -212,6 +212,7 @@ local menu = {
     nearest = ui.new_multiselect("RAGE", "Other", "Nearest hitboxes", names),
 
     legit_aa = ui.new_checkbox("RAGE", "Other", "Legit anti-aim"),
+    bypass = ui.new_checkbox("RAGE", "Other", "Bypass restrictions"),
     static_aa = ui.new_checkbox("RAGE", "Other", "Static body yaw"),
     draw_edges = ui.new_checkbox("RAGE", "Other", "Draw anti-aim edges"),
     edge_picker = ui.new_color_picker("RAGE", "Other", "Edges color", 32, 160, 230, 255),
@@ -251,6 +252,7 @@ local function set_visible()
     ui.set_visible(menu.nearest, active)
 
     ui.set_visible(menu.legit_aa, active)
+    ui.set_visible(menu.bypass, active and legit_aa)
     ui.set_visible(menu.static_aa, active and legit_aa)
     ui.set_visible(menu.draw_edges, active and legit_aa)
     ui.set_visible(menu.edge_picker, active and legit_aa)
@@ -408,7 +410,7 @@ client.set_event_callback("paint", function()
 
     -- Analysis
     local interval = 1 / globals.tickinterval()
-    local frame = interval * globals.frametime()
+    local frame = interval * globals.absoluteframetime()
     local latency = client.latency() * 1000
 
     local end_frame = 0
@@ -420,7 +422,7 @@ client.set_event_callback("paint", function()
 
         predicted_cmd = (end_frame - 100) / 100
 
-        if predicted_cmd > 0.7 then
+        if not ui_get(menu.bypass) and predicted_cmd > 0.7 then
             cached_time = globals.realtime() + 1
         end
     end
@@ -446,7 +448,7 @@ client.set_event_callback("paint", function()
     cache_process("AA_BODY", ui_get(body), p_key, function() ui_set(body, "Off") end, function(c) ui_set(body, c) end)
 
     if data ~= nil then
-        if predicted_cmd > 0.85 then
+        if not ui_get(menu.bypass) and predicted_cmd > 0.85 then
             cached_time = globals.realtime() + 1
         end
 
