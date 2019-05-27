@@ -37,17 +37,10 @@ local function _callback(itself)
     ui.set_visible(LBY, not itself)
 end
 
-local function animstate_get()
-    local get_prop = function(...)
-        return entity.get_prop(entity.get_local_player(), ...)
-    end
-    
-    local x, y, z = get_prop("m_vecVelocity")
+local function get_velocity_data()
+    local x, y, z = entity.get_prop(entity.get_local_player(), "m_vecVelocity")
 
-    local fl_speed = math.sqrt(x^2 + y^2)
-    local maxdesync = (59 - 58 * fl_speed / 580)
-
-    return fl_speed, maxdesync, (z^2 > 0)
+    return math.sqrt(x^2 + y^2), (z^2 > 0)
 end
 
 client.set_event_callback("setup_command", function(cmd)
@@ -56,7 +49,7 @@ client.set_event_callback("setup_command", function(cmd)
         ui_get(inverse_key)
         ui_set(inverse_key, "Toggle")
 
-    local flSpeed, max_desync, in_air = animstate_get()
+    local flSpeed, in_air = get_velocity_data()
     local lean = 59 - (0.59 * ui_get(body_lean))
 
     if not cmd_active or in_air then return else
@@ -68,12 +61,11 @@ client.set_event_callback("setup_command", function(cmd)
         [yaw_jitter] = 'Off',
         [body] = 'Static',
         [limit] = 60,
-        [twist] = true,
-        [LBY] = true,
+        [LBY] = false,
     
         -- Body lean
         [yaw_num] = inversed and -lean or lean,
-        [body_num] = inversed and -max_desync or max_desync
+        [body_num] = inversed and -180 or 180
     })
 
     local cmd_speed = cmd.in_duck ~= 0 and 2.941177 or 1.000001
