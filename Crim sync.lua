@@ -6,7 +6,6 @@ local yaw, yaw_num = ui.reference("AA", "Anti-aimbot angles", "Yaw")
 local yaw_jitter, yaw_jitter_num = ui.reference("AA", "Anti-aimbot angles", "Yaw jitter")
 local body, body_num = ui.reference("AA", "Anti-aimbot angles", "Body yaw")
 local limit = ui.reference("AA", "Anti-aimbot angles", "Fake yaw limit")
-local twist = ui.reference("AA", "Anti-aimbot angles", "Twist")
 local LBY = ui.reference("AA", "Anti-aimbot angles", "Lower body yaw")
 
 local flag_active = ui.reference("AA", "Fake lag", "Enabled")
@@ -33,7 +32,6 @@ local function _callback(itself)
     ui.set_visible(body, not itself)
     ui.set_visible(body_num, not itself and ui_get(body_num) ~= "Off")
     ui.set_visible(limit, not itself)
-    ui.set_visible(twist, not itself)
     ui.set_visible(LBY, not itself)
 end
 
