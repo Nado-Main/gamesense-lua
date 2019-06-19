@@ -70,19 +70,6 @@ lag_data.predict_player = function(player, simulation_tick_delta, no_collision)
         if not data.on_ground and not no_collision then
             local gravity_per_tick = sv_gravity * tickinterval
             data.velocity[3] = data.velocity[3] - gravity_per_tick
-        else
-            local sv_accelerate = cvar.sv_accelerate:get_int()
-            local sv_maxspeed = cvar.sv_maxspeed:get_int()
-            local surface_friction = 1.0
-
-            local speed = math.sqrt(data.velocity[1]^2 + data.velocity[2]^2)
-            local max_accelspeed = sv_accelerate * tickinterval * sv_maxspeed * surface_friction
-    
-            local wishspeed = max_accelspeed
-
-            if speed - max_accelspeed <= -1 then
-                wishspeed = max_accelspeed / (speed / (sv_accelerate * tickinterval))
-            end
         end
     
         predicted_origin = vec_add(predicted_origin, {
