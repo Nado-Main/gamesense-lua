@@ -88,7 +88,7 @@ client.set_event_callback("setup_command", function(c)
     local in_air = c.in_jump == 1 or bit_band(get_prop("m_fFlags"), 1) ~= 1
 
     local is_active = ui_get(enabled) and (
-        (compare(conditions, list[1]) and not in_air and math.sqrt(x^2 + y^2) > 0) or 
+        (compare(conditions, list[1]) and not in_air and math.sqrt(x^2 + y^2) > 1) or 
         (compare(conditions, list[2]) and in_air)
     )
 
