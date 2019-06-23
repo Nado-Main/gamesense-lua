@@ -17,7 +17,7 @@ local visible_callback = function(this)
     ui.set_visible(hitchance, ui_get(this))
 end
 
-local invoke_cache_process = function(name, condition, should_call, VAR)
+local invoke_cache_callback = function(name, condition, should_call, VAR)
     local hotkey_modes = {
         [0] = "always on",
         [1] = "on hotkey",
@@ -54,8 +54,8 @@ client.set_event_callback("paint", function()
     local is_active = ui_get(active) and weapon ~= nil
     local is_taser = is_active and bit_band(entity_get_prop(weapon, "m_iItemDefinitionIndex"), 0xFFFF) == 31
 
-    invoke_cache_process("quickstop_ref", quickstop_ref, is_taser, "Off")
-    invoke_cache_process("hitchance_ref", hitchance_ref, is_taser, ui_get(hitchance))
+    invoke_cache_callback("quickstop_ref", quickstop_ref, is_taser, "Off")
+    invoke_cache_callback("hitchance_ref", hitchance_ref, is_taser, ui_get(hitchance))
 end)
 
 visible_callback(active)
