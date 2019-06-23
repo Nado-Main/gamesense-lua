@@ -4,8 +4,8 @@ local ref, ref_color = ui.reference("Visuals", "Colored models", "Local fake sha
 local menu = {
     active = ui.new_checkbox("Visuals", "Colored models", "Shadow pulsating"),
     max_alpha = ui.new_slider("Visuals", "Colored models", "Maximum shadow alpha", 25, 255, 175, true),
-    threshold = ui.new_slider("Visuals", "Colored models", "Alpha threshold", 0, 100, 25, false),
-    speed = ui.new_slider("Visuals", "Colored models", "Alpha speed", 0, 100, 90, true, "%"),
+    threshold = ui.new_slider("Visuals", "Colored models", "Alpha threshold", 1, 99, 25, false),
+    speed = ui.new_slider("Visuals", "Colored models", "Alpha speed", 1, 99, 90, true, "%"),
 }
 
 local act = 1
