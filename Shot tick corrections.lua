@@ -1,5 +1,13 @@
--- On shot: It will attempt to send firing tick as soon as possible
--- Always on: It will hide firing animation as soon as possible + apply "on shot" selection
+--[[
+    Selections:
+    * On shot: It will attempt to send firing tick as soon as possible
+    * Always on: It will hide firing animation as soon as possible + apply "on shot" selection
+
+    - https://streamable.com/fu0h3 -- Explanation why this script is has to be used
+    - This lua makes your bullets register faster, like onetap or aimware
+    - Note: w/o this lua your shots will be delayed (even w/o fakelag while shooting)
+    - It won't even register when getting peeked (if your hp is lower than minimum damage of enemies weapon)
+]]
 
 local fl_onshot = ui.reference("AA", "Fake lag", "Fake lag while shooting")
 local duck_assist = ui.reference("RAGE", "Other", "Duck peek assist")
