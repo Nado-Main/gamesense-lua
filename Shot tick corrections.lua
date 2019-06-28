@@ -5,7 +5,7 @@
 
     - https://streamable.com/fu0h3 -- Explanation why this script is has to be used
     - This lua makes your bullets register faster, like onetap or aimware
-    - Note: w/o this lua your shots will be delayed (even w/o fakelag while shooting)
+    - Note: w/o this lua your shots will be delayed (even w/o fakelag while shooting / fakelag)
     - It won't even register when getting peeked (if your hp is lower than minimum damage of enemies weapon)
 ]]
 
