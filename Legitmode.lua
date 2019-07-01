@@ -201,7 +201,7 @@ local yaw_jitter, yaw_jitter_num = ui.reference("AA", "Anti-aimbot angles", "Yaw
 local body, body_num = ui.reference("AA", "Anti-aimbot angles", "Body yaw")
 local limit = ui.reference("AA", "Anti-aimbot angles", "Fake yaw limit")
 local twist = ui.reference("AA", "Anti-aimbot angles", "Twist")
-local lby = ui.reference("AA", "Anti-aimbot angles", "Lower body yaw")
+local lby = ui.reference("AA", "Anti-aimbot angles", "Lower body yaw target")
 
 local menu = {
     enabled = ui.new_checkbox("RAGE", "Other", "Legit mode"),
@@ -463,7 +463,7 @@ client.set_event_callback("paint", function()
             
                 [body] = 'Static',
                 [twist] = false,
-                [lby] = true
+                [lby] = "Opposite"
             })
     
             if data.fraction < 1 then
