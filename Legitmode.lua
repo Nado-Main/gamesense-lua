@@ -29,10 +29,6 @@ end
 local rad2deg = function(rad) return (rad * 180 / math.pi) end
 local deg2rad = function(deg) return (deg * math.pi / 180) end
 
-local vector_distance = function(a, b)
-	return math.sqrt(math.pow(a.x - b.x, 2) + math.pow(a.y - b.y, 2) + math.pow(a.z - b.z, 2))
-end
-
 local trace_line = function(entity, start, _end)
     return client.trace_line(entity, start.x, start.y, start.z, _end.x, _end.y, _end.z)
 end
@@ -142,6 +138,11 @@ local ui_get, ui_set = ui.get, ui.set
 local get_local = entity.get_local_player
 local get_prop = entity.get_prop
 
+local var_direction = {
+    "Safe",
+    "Maximum"
+}
+
 local edge_count = { [1] = 7, [2] = 12, [3] = 15, [4] = 19, [5] = 23, [6] = 28, [7] = 29 }
 local names = { "Head", "Chest", "Stomach" --[[, "Arms", "Legs", "Feet" ]] }
 
@@ -154,36 +155,6 @@ local hitscan = {
     ["Feet"] = { 11, 12 }
 }
 
-local Colors = {
-    { 124, 195, 13 },
-    { 176, 205, 10 },
-    { 213, 201, 19 },
-    { 220, 169, 16 },
-    { 228, 126, 10 },
-    { 229, 104, 8 },
-    { 235, 63, 6 },
-    { 237, 27, 3 },
-    { 255, 0, 0 }
-}
-
-local function get_color(number, max)
-    local _math = function(int, max, declspec)
-        local int = (int > max and max or int)
-    
-        local tmp = max / int;
-        local i = (declspec / tmp)
-        i = (i >= 0 and math.floor(i + 0.5) or math.ceil(i - 0.5))
-    
-        return i
-    end
-
-	i = _math(number, max, #Colors)
-	return
-		Colors[i <= 1 and 1 or i][1], 
-		Colors[i <= 1 and 1 or i][2],
-		Colors[i <= 1 and 1 or i][3]
-end
-
 local legit_active, legit_key = ui.reference("Legit", "Aimbot", "Enabled")
 local rage_active, active_key = ui.reference("RAGE", "Aimbot", "Enabled")
 local rage_selection = ui.reference("RAGE", "Aimbot", "Target selection")
@@ -191,79 +162,63 @@ local rage_hitbox = ui.reference("RAGE", "Aimbot", "Target hitbox")
 local rage_recoil = ui.reference("RAGE", "Other", "Remove recoil")
 local rage_autowall = ui.reference("RAGE", "Aimbot", "Automatic penetration")
 local rage_fakeduck = ui.reference("RAGE", "Other", "Duck peek assist")
+local infinite_duck = ui.reference("AA", "Other", "Infinite duck")
+local auto_pistols = ui.reference("MISC", "Miscellaneous", "Automatic weapons")
 
-local TP, TP_KEY = ui.reference("VISUALS", "Effects", "Force third person (alive)")
+local autofire = ui.reference("RAGE", "Aimbot", "Automatic fire")
+local psilent = ui.reference("RAGE", "Aimbot", "Silent aim")
+local aimstep = ui.reference("RAGE", "Aimbot", "Reduce aim step")
+local maximum_fov = ui.reference("RAGE", "Aimbot", "Maximum FOV")
+
 local flag_limit = ui.reference("AA", "Fake lag", "Limit")
 local pitch = ui.reference("AA", "Anti-aimbot angles", "Pitch")
 local yaw_base = ui.reference("AA", "Anti-aimbot angles", "Yaw base")
 local yaw, yaw_num = ui.reference("AA", "Anti-aimbot angles", "Yaw")
-local yaw_jitter, yaw_jitter_num = ui.reference("AA", "Anti-aimbot angles", "Yaw jitter")
+local yaw_jitter = ui.reference("AA", "Anti-aimbot angles", "Yaw jitter")
 local body, body_num = ui.reference("AA", "Anti-aimbot angles", "Body yaw")
 local limit = ui.reference("AA", "Anti-aimbot angles", "Fake yaw limit")
 local twist = ui.reference("AA", "Anti-aimbot angles", "Twist")
 local lby = ui.reference("AA", "Anti-aimbot angles", "Lower body yaw target")
 
 local menu = {
-    enabled = ui.new_checkbox("RAGE", "Other", "Legit mode"),
-    rage_assist = ui.new_checkbox("RAGE", "Other", "Rage aimbot assist"),
+    enabled = ui.new_checkbox("RAGE", "Other", "Rage aimbot assistance"),
 
     ov_autowall = ui.new_checkbox("RAGE", "Other", "Override automatic penetration"),
     ov_autowall_key = ui.new_hotkey("RAGE", "Other", "Override penetration key", true),
+
     nearest = ui.new_multiselect("RAGE", "Other", "Nearest hitboxes", names),
 
     legit_aa = ui.new_checkbox("RAGE", "Other", "Legit anti-aim"),
-    bypass = ui.new_checkbox("RAGE", "Other", "Bypass restrictions"),
-    static_aa = ui.new_checkbox("RAGE", "Other", "Static body yaw"),
+    direction = ui.new_combobox("RAGE", "Other", "\n legitmode_aa_direction", var_direction),
+
+    edge_factor = ui.new_slider("RAGE", "Other", "Edge count per side \n legitmode_edges_factor", 1, 7, 3),
+    edge_distance = ui.new_slider("RAGE", "Other", "\n legitmode_edges_distance", 0, 50, 25, true, "in"),
+
     draw_edges = ui.new_checkbox("RAGE", "Other", "Draw anti-aim edges"),
-    edge_picker = ui.new_color_picker("RAGE", "Other", "Edges color", 32, 160, 230, 255),
-
-    edge_factor = ui.new_slider("RAGE", "Other", "Factor", 1, 7, 3),
-    edge_distance = ui.new_slider("RAGE", "Other", "Distance", 0, 50, 25),
-
-    aim_setup = ui.new_button("RAGE", "Other", "Setup aimbot", function()
-        local autofire = ui.reference("RAGE", "Aimbot", "Automatic fire")
-        local psilent = ui.reference("RAGE", "Aimbot", "Silent aim")
-        local aimstep = ui.reference("RAGE", "Aimbot", "Reduce aim step")
-        local maximum_fov = ui.reference("RAGE", "Aimbot", "Maximum FOV")
-
-        local fov = ui_get(maximum_fov)
-
-        ui_mset({
-            [rage_selection] = 'Near crosshair',
-            [rage_hitbox] = { 'Head' },
-            [rage_recoil] = false,
-            [psilent] = false,
-            [autofire] = true,
-            [aimstep] = false,
-            [maximum_fov] = fov > 10 and 10 or fov
-        })
-
-        client.log("Legit mode > Done")
-    end)
+    edge_picker = ui.new_color_picker("RAGE", "Other", "\n legitmode_edges_clr", 32, 160, 230, 255),
 }
 
 local function set_visible()
     local active = ui_get(menu.enabled)
     local legit_aa = ui_get(menu.legit_aa)
 
-    ui.set_visible(menu.rage_assist, active)
     ui.set_visible(menu.ov_autowall, active)
     ui.set_visible(menu.ov_autowall_key, active)
+
     ui.set_visible(menu.nearest, active)
 
     ui.set_visible(menu.legit_aa, active)
-    ui.set_visible(menu.bypass, active and legit_aa)
-    ui.set_visible(menu.static_aa, active and legit_aa)
-    ui.set_visible(menu.draw_edges, active and legit_aa)
-    ui.set_visible(menu.edge_picker, active and legit_aa)
+    ui.set_visible(menu.direction, active and legit_aa)
+
     ui.set_visible(menu.edge_factor, active and legit_aa)
     ui.set_visible(menu.edge_distance, active and legit_aa)
+
+    ui.set_visible(menu.draw_edges, active and legit_aa)
+    ui.set_visible(menu.edge_picker, active and legit_aa)
 end
 
-local function do_legit_aa()
-    local local_player = get_local()
-
-    if not entity.is_alive(local_player) then
+local function do_legit_aa(local_player)
+    if not local_player or not entity.is_alive(local_player) then
         return
     end
 
@@ -279,11 +234,11 @@ local function do_legit_aa()
     local central = deg2rad(math.floor(camera.y + 0.5))
 
     local data = {
-        ["fraction"] = 1,
-        ["surpassed"] = false,
-        ["angle"] = vector(0, 0, 0),
-        ["var"] = 0,
-        ["side"] = "UNKNOWN"
+        fraction = 1,
+        surpassed = false,
+        angle = vector(0, 0, 0),
+        var = 0,
+        side = "LAST KNOWN"
     }
 
     for a = central, math.pi * 3.0, step do
@@ -295,27 +250,27 @@ local function do_legit_aa()
         local abs = math.abs(clm)
 
         if abs < 90 and abs > 1 then
-            local side = "UNKNOWN"
+            local side = "LAST KNOWN"
             local location = vector(
                 radius * math.cos(a) + m_vecOrigin.x, 
                 radius * math.sin(a) + m_vecOrigin.y, 
                 m_vecOrigin.z
             )
 
-            local fraction, entindex = trace_line(local_player, m_vecOrigin, location)
+            local _fr, entindex = trace_line(local_player, m_vecOrigin, location)
 
             if math.floor(clm + 0.5) < -21 then side = "LEFT" end
             if math.floor(clm + 0.5) > 21 then side = "RIGHT" end
 
             local fr_info = {
-                ["fraction"] = fraction,
-                ["surpassed"] = (fraction < 1),
-                ["angle"] = vector(0, clamp_angles(rad2deg(a)), 0),
-                ["var"] = math.floor(clm + 0.5),
-                ["side"] = side --[ 0 - center / 1 - left / 2 - right ]
+                fraction = _fr,
+                surpassed = (_fr < 1),
+                angle = vector(0, clamp_angles(rad2deg(a)), 0),
+                var = math.floor(clm + 0.5),
+                side = side --[ 0 - center / 1 - left / 2 - right ]
             }
 
-            if data.fraction > fraction then data = fr_info end
+            if data.fraction > _fr then data = fr_info end
 
             if ui_get(menu.draw_edges) then
                 world_to_screen(location.x, location.y, location.z - m_vecViewOffset.z, function(x, y)
@@ -340,11 +295,20 @@ ui.set_callback(menu.legit_aa, set_visible)
 
 local cache = { }
 local cache_process = function(name, condition, should_call, a, b)
-    cache[name] = cache[name] ~= nil and cache[name] or condition
+    cache[name] = cache[name] ~= nil and cache[name] or ui_get(condition)
 
-    if should_call then a() else
+    if should_call then
+        if type(a) == "function" then a() else
+            ui_set(condition, a)
+        end
+    else
         if cache[name] ~= nil then
-            b(cache[name])
+            if b ~= nil and type(b) == "function" then
+                b(cache[name])
+            else
+                ui_set(condition, cache[name])
+            end
+
             cache[name] = nil
         end
     end
@@ -352,146 +316,132 @@ end
 
 client.set_event_callback("setup_command", function(cmd)
     local local_player = get_local()
-    local in_legit = ui_get(legit_key)
-
+    
     if not ui_get(menu.enabled) then
         return
-    end
-
-    if ui_get(menu.rage_assist) then
-        cache_process("rage_active", ui_get(rage_active), in_legit and not ui_get(rage_fakeduck), function()
-            ui_set(rage_recoil, false)
-            ui_set(rage_active, false)
-        end, function(c)
-            ui_set(rage_active, c)
-        end)
-
-        cache_process("on_fakeduck", ui_get(flag_limit), ui_get(rage_active) and ui_get(rage_fakeduck), function()
-            local _, _, m_vecViewOffset = get_prop(local_player, "m_vecViewOffset")
-
-            ui_set(flag_limit, 14)
-            if (ui_get(TP) and ui_get(TP_KEY)) or m_vecViewOffset < 64 then
-                cmd.in_attack = 0
-            end
-        end, function(c)
-            ui_set(flag_limit, c)
-        end)
     end
 
     if ui_get(menu.ov_autowall) then
         ui_set(rage_autowall, ui_get(menu.ov_autowall_key))
     end
 
-    if ui_get(menu.legit_aa) and ui_get(menu.static_aa) and not in_legit then
-        local _, _, AIR_VELOCITY = get_prop(local_player, "m_vecVelocity")
+    local fov = ui_get(maximum_fov)
+    local ractive = ui_get(rage_active)
 
-        if cmd.in_jump == 0 and AIR_VELOCITY^2 < 1 then
-            local sm = cmd.in_duck ~= 0 and 2.941177 or 1.000001
-            local sm = cmd.command_number % 4 < 2 and -sm or sm
-            
-            cmd.sidemove = cmd.sidemove ~= 0 and cmd.sidemove or sm
-        end
-    end
+    local in_legit = ui_get(legit_active) and ui_get(legit_key)
+    local fakeduck_ready = ractive and ui_get(infinite_duck) and ui_get(rage_fakeduck)
 
-    local enemy, hid, dst = get_nearbox(ui_get(rage_fakeduck))
+    local enemy, hid, dst = get_nearbox(fakeduck_ready)
     local hitbox = find_cmd(hitscan, hid)
 
-    if contains(ui_get(menu.nearest), hitbox) then
-        ui_set(rage_selection, "Near crosshair")
-        ui_set(rage_hitbox, hitbox)
-    end
+    ui_mset({
+        [rage_selection] = 'Near crosshair',
+        [rage_hitbox] = contains(ui_get(menu.nearest), hitbox) and hitbox or ui_get(rage_hitbox),
+
+        [maximum_fov] = fov > 10 and 10 or fov,
+        [rage_recoil] = false,
+        [aimstep] = false,
+        [psilent] = false,
+        [autofire] = true
+    })
+
+    -- cache_process("rage_active", rage_active, in_legit and not fakeduck_ready, false)
+    cache_process("on_fakeduck_ph1", flag_limit, ractive and fakeduck_ready, 14)
+    cache_process("on_fakeduck_ph2", auto_pistols, ractive and fakeduck_ready, false)
+    cache_process("on_fakeduck_ph3", legit_active, ractive and fakeduck_ready, function()
+        ui_set(legit_active, false)
+        if get_prop(local_player, "m_flDuckAmount") > 0.01 then
+            cmd.in_attack = 0
+        end
+    end)
 end)
 
-local cached_time = globals.realtime()
 client.set_event_callback("paint", function()
-    if not ui_get(menu.enabled) or not get_local() or not ui_get(menu.legit_aa) then
+    local local_player = get_local()
+
+    local aim_active = ui_get(legit_active) and ui_get(legit_key)
+    local lowerbody = ui_get(menu.direction) == var_direction[1] and 'Eye yaw' or 'Opposite'
+
+    if not ui_get(menu.enabled) or not ui_get(menu.legit_aa) or not local_player then
         return
     end
 
-    -- Analysis
-    local interval = 1 / globals.tickinterval()
-    local frame = interval * globals.absoluteframetime()
-    local latency = client.latency() * 1000
+    -- cache_process("antiaim_pitch", pitch, aim_active, "Off")
+    -- cache_process("antiaim_yaw", yaw, aim_active, "Off")
+    -- cache_process("antiaim_byaw", body, aim_active, "Off")
+    -- cache_process("antiaim_lbyt", lby, aim_active, "Off")
 
-    local end_frame = 0
-    local predicted_cmd = 0
+    local data = do_legit_aa(local_player)
 
-    if frame > 0.55 then
-        end_frame = frame
-        end_frame = (end_frame / 0.55) * 100
-
-        predicted_cmd = (end_frame - 100) / 100
-
-        if not ui_get(menu.bypass) and predicted_cmd > 0.7 then
-            cached_time = globals.realtime() + 1
-        end
+    if data == nil then
+        return
     end
 
-    if 150 - latency < 75 then
-        latency = 75 - (150 - latency)
-        if latency < 1 then latency = 1 end
-
-        latency = (latency / 75) * 100
-        predicted_cmd = predicted_cmd + (latency / 100)
-    end
-
-    if predicted_cmd > 1 then 
-        predicted_cmd = 1
-    end
-
-    local surpassed = globals.realtime() > cached_time
-    local p_key = ui_get(legit_key) or not surpassed
-    local data = do_legit_aa()
-
-    cache_process("AA_PITCH", ui_get(pitch), p_key, function() ui_set(pitch, "Off") end, function(c) ui_set(pitch, c) end)
-    cache_process("AA_YAW", ui_get(yaw), p_key, function() ui_set(yaw, "Off") end, function(c) ui_set(yaw, c) end)
-    cache_process("AA_BODY", ui_get(body), p_key, function() ui_set(body, "Off") end, function(c) ui_set(body, c) end)
-
-    if data ~= nil then
-        if not ui_get(menu.bypass) and predicted_cmd > 0.85 then
-            cached_time = globals.realtime() + 1
-        end
-
-        if not p_key and surpassed and data.fraction < 1 then
-            ui_mset({
-                [pitch] = 'Off',
-                [yaw_base] = 'Local view',
-                [yaw] = '180',
-                [yaw_num] = 180,
-                [yaw_jitter] = "Off",
-                [limit] = 60,
+    if not aim_active then
+        ui_mset({
+            [pitch] = 'Off',
+            [yaw_base] = 'Local view',
+            [yaw] = '180',
+            [yaw_num] = 180,
+            [yaw_jitter] = "Off",
             
-                [body] = 'Static',
-                [twist] = false,
-                [lby] = "Opposite"
-            })
+            [body] = 'Static',
     
+            [lby] = lowerbody,
+            [twist] = false,
+            [limit] = 60,
+        })
+    
+        if not aim_active and data.fraction < 1 then
             if data.fraction < 1 then
-                ui_set(body_num, data.var > 0 and 120 or -120)
+                ui_set(body_num, data.var > 0 and 180 or -180)
             end
-        elseif p_key then
-            data.side = "DISABLED"
         end
-
-        -- Indicators
-        local i = 0.5
-        local end_datagram = 1 - predicted_cmd
-        local r, g, b = Colors[1][1], Colors[1][2], Colors[1][3]
-
-        if (predicted_cmd * 100) > 35 then
-            r, g, b = get_color((predicted_cmd * 100) - 35, 35)
-        end
-
-        local text = "AA"
-        local width, height = renderer.measure_text("+", text)
-        local y = renderer.indicator(255, 255, 255, 150, text)
-
-        renderer.rectangle(10, y + 28, width, 5, 0, 0, 0, not p_key and 150 or 0)
-        renderer.rectangle(11, y + 29, ((width - 2) / 1) * end_datagram, 3, r, g, b, not p_key and 255 or 0)
-
-        local sync = not surpassed and "OUT OF SYNC" or (math.floor(end_datagram * 100) .. "%")
-
-        renderer.text(width + 17, y + (10  * i), 255, 255, 255, 255, "-", nil, "SYNC: " .. sync); i = i + 1;
-        renderer.text(width + 17, y + (10 * i), 255, 255, 255, 255, "-", nil, "STATE: " .. data.side); i = i + 1;
     end
+
+    -- calculations
+    local clamp = function(int, min, max)
+        local vl = int
+
+        vl = vl < min and min or vl
+        vl = vl > max and max or vl
+
+        return vl
+    end
+
+    local vl = { get_prop(local_player, "m_vecVelocity") }
+    local vl_sqrt = math.sqrt(vl[1]*vl[1] + vl[2]*vl[2])
+    local vl_actual = math.floor(math.min(10000, vl_sqrt + 0.5))
+
+    local by = ui_get(body_num) 
+    local max_dsn = clamp(59 - 58 * vl_actual / 580, 0, 60)
+    local byaw_value = clamp(by, by < 0 and -60 or 0, by > 0 and 60 or 0)
+    local end_byaw = clamp(byaw_value, by < 0 and -max_dsn or 0, by > 0 and max_dsn or 0)
+
+    -- indication
+    local i = 0.5
+    local text = "AA"
+    local percent = 1
+
+    local width, height = renderer.measure_text("+", text)
+    local y = renderer.indicator(255, 255, 255, 150, text)
+
+    local state = aim_active and "DISABLED" or data.side
+    local end_width = ((width / 2 - 2) / 60) * end_byaw
+
+    renderer.rectangle(10, y + 27, width, 5, 0, 0, 0, not aim_active and 150 or 0)
+
+    if end_byaw > 0 then
+        renderer.rectangle(11 + width / 2, y + 28, end_width, 3, 124, 195, 13, not aim_active and 255 or 0)
+        renderer.text(11 + width / 2 + end_width, y + 24, 255, 255, 255, not aim_active and 255 or 0, "-", nil, ">")
+    else
+        end_width = 15 - (end_width * -1)
+        end_width = end_width > 15 and 15 or end_width
+
+        renderer.rectangle(10 + end_width, y + 28, width / 2 - end_width, 3, 124, 195, 13, not aim_active and 255 or 0)
+        renderer.text(10 + end_width, y + 24, 255, 255, 255, not aim_active and 255 or 0, "-", nil, "<")
+    end
+
+    renderer.text(width + 17, y + (10  * i), 255, 255, 255, 255, "-", nil, "MAX DSN: " .. (aim_active and "0" or math.abs(end_byaw)) .. "°"); i = i + 1;
+    renderer.text(width + 17, y + (10 * i), 255, 255, 255, 255, "-", nil, "DIR: " .. (aim_active and "EYE YAW" or data.side)); i = i + 1;
 end)
