@@ -155,6 +155,11 @@ client.set_event_callback("predict_command", function()
     local m_flNextAttack = entity_get_prop(me, "m_flNextAttack")
     local next_attack = entity_get_prop(weapon, "m_flNextPrimaryAttack")
 
+    if next_attack == nil then
+        script.active = false
+        return
+    end
+
     local max_time = 0.69
     local current_time = globals.curtime()
     local m_flAttackTime = next_attack + 0.5
