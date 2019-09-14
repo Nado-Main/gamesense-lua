@@ -42,16 +42,6 @@ function script:multi_exec(func, list)
     end
 end
 
-function script:compare(tab, val)
-    for i = 1, #tab do
-        if tab[i] == val then
-            return true
-        end
-    end
-    
-    return false
-end
-
 local menu = {
     active = script:call(ui.new_checkbox, { "cfs_active", "Crim fire" }),
     switch_hk = script:call(ui.new_hotkey, { "cfs_hotkey", "Crim fire hotkey" }, true),
