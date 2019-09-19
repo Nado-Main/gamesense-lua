@@ -1,99 +1,143 @@
-local yaw, yaw_num = ui.reference("AA", "Anti-aimbot angles", "Yaw")
-local yaw_jitter, yaw_jitter_num = ui.reference("AA", "Anti-aimbot angles", "Yaw jitter")
-local body, body_num = ui.reference("AA", "Anti-aimbot angles", "Body yaw")
-local limit = ui.reference("AA", "Anti-aimbot angles", "Fake yaw limit")
--- local twist = ui.reference("AA", "Anti-aimbot angles", "Twist")
+local script = {
+    _debug = false,
 
-local flag_limit = ui.reference("AA", "Fake lag", "Limit")
-local flag_onshot = ui.reference("AA", "Fake lag", "Fake lag while shooting")
-local fr, fr_key = ui.reference("AA", "Anti-aimbot angles", "Freestanding")
+    menu = { "AA", "Other" },
+    conditions = { "Default", "Running", "Slow motion", "Air", "Manual" },
 
-local air_duck = ui.reference("MISC", "Miscellaneous", "Air duck")
-local fr_bodyyaw = ui.reference("AA", "Anti-aimbot angles", "Freestanding body yaw")
-local slowmo, slowmo_key = ui.reference("AA", "Other", "Slow motion")
-local duck_peek_assist = ui.reference("RAGE", "Other", "Duck peek assist")
-local onshot, onshot_hk = ui.reference("AA", "Other", "On shot anti-aim")
+    yaw_base = { "Local view", "At targets", "Movement direction" },
+    jitter_type = { "Off", "Offset", "Center", "Random" },
 
-local ui_get, ui_set = ui.get, ui.set
-local aa_type = { "Static", "Jitter" }
-local jitter_type = { "Offset", "Center", "Random" }
-local list = { "Default", "Running", "Slow motion", "Air" }
+    crooked_type = { "Twist", "Desync" },
+    crooked_stand_type = { "Twist", "Desync", "Anti balance adjust" },
 
-local set_element = function(name, var)
-    local end_name = name == nil and "" or name
+    treshold = false,
+}
 
-    if var ~= nil then
-        end_name = end_name ~= "" and (end_name .. " ") or end_name
-        end_name = end_name .. "\n " .. var
+function script:call(func, name, ...)
+    if func == nil then
+        return
     end
 
-    return end_name
+    local end_name = name[2] == nil and "" or name[2]
+
+    if name[1] ~= nil then
+        end_name = end_name ~= "" and (end_name .. " ") or end_name
+        end_name = end_name .. "\n " .. name[1]
+    end
+
+    return func(self.menu[1], self.menu[2], end_name, ...)
 end
 
-local active = ui.new_checkbox("AA", "Other", set_element("Fake angles", "crimsync_active"))
-local inverse_key = ui.new_hotkey("AA", "Other", set_element("Fake angles inverse", "crimsync_inverse_key"), true)
-local condition = ui.new_combobox("AA", "Other", set_element("Condition", "crimsync_condition"), list)
+local active = script:call(ui.new_checkbox, { "afa_active", "Fake angles" })
+local switch_hk = script:call(ui.new_hotkey, { "afa_hotkey", "Fake angles hotkey" }, true)
 
-local modes = {
+local manual_aa = script:call(ui.new_checkbox, { "afa_manual", "Manual anti-aims" })
+local arrow_dst = script:call(ui.new_slider, { "afa_manual_arrow_distance", nil }, 1, 100, 12, true, "%")
+local picker = script:call(ui.new_color_picker, { "afa_manual_color_picker", "Color picker" }, 130, 156, 212, 255)
+
+local manual_left_dir = script:call(ui.new_hotkey, { "afa_manual_left", "Left direction" })
+local manual_right_dir = script:call(ui.new_hotkey, { "afa_manual_right", "Right direction" })
+local manual_backward_dir = script:call(ui.new_hotkey, { "afa_manual_backward", "Backward direction" })
+
+local manual_state = script:call(ui.new_slider, { "afa_manual_state", nil }, 0, 3, 0)
+local condition = script:call(ui.new_combobox, { "afa_condition", nil }, script.conditions)
+
+-- REFERENCE
+local base = ui.reference("AA", "Anti-aimbot angles", "Yaw base")
+local yaw, yaw_num = ui.reference("AA", "Anti-aimbot angles", "Yaw")
+local yaw_jt, yaw_jt_num = ui.reference("AA", "Anti-aimbot angles", "Yaw jitter")
+local body, body_num = ui.reference("AA", "Anti-aimbot angles", "Body yaw")
+local limit = ui.reference("AA", "Anti-aimbot angles", "Fake yaw limit")
+local twist = ui.reference("AA", "Anti-aimbot angles", "Twist")
+
+local lower_body_yaw = ui.reference("AA", "Anti-aimbot angles", "Lower body yaw target")
+local fr_bodyyaw = ui.reference("AA", "Anti-aimbot angles", "Freestanding body yaw")
+local fr, fr_hk = ui.reference("AA", "Anti-aimbot angles", "Freestanding")
+local slowmo, slowmo_key = ui.reference("AA", "Other", "Slow motion")
+
+local flag_limit = ui.reference("AA", "Fake lag", "Limit")
+local onshot, onshot_hk = ui.reference("AA", "Other", "On shot anti-aim")
+local dt, dt_hk = ui.reference("RAGE", "Other", "Double tap")
+local duck_assist = ui.reference("RAGE", "Other", "Duck peek assist")
+
+local menu_data = {
     ["Default"] = {
-        aa_mode = ui.new_multiselect("AA", "Other", set_element("Anti-aimbot mode", "aa_mode_default"), aa_type),
-        body_lean = ui.new_slider("AA", "Other", set_element("Body lean", "bodylean_default"), 0, 100, 55, true, "%"),
-        body_lean_inv = ui.new_slider("AA", "Other", set_element(nil, "bodylean_inv_default"), 0, 100, 55, true, "%"),
-        jitter_type = ui.new_combobox("AA", "Other", set_element("Jitter mode", "jitter_type_default"), jitter_type),
-        jitter_grad = ui.new_slider("AA", "Other", set_element(nil, "jitter_default"), 0, 180, 5, true, "°"),
-        static_body = ui.new_checkbox("AA", "Other", set_element("Static body yaw", "default_static_bodyyaw")),
-        shift_onshot = ui.new_checkbox("AA", "Other", set_element("Shift onshot", "shift_onshot_default")),
-        -- desync = ui.new_checkbox("AA", "Other", set_element("Desync", "desync_default")),
-    }, 
-    
+        base = script:call(ui.new_combobox, { "afa_default_yaw_base", "Yaw base" }, script.yaw_base),
+
+        body_lean = script:call(ui.new_slider, { "afa_default_body_lean", "Body lean" }, 0, 100, 55, true, "%"),
+        body_lean_inv = script:call(ui.new_slider, { "afa_default_body_lean_inverse", nil }, 0, 100, 55, true, "%"),
+
+        yaw_jitter = script:call(ui.new_combobox, { "afa_default_yaw_jitter", "Yaw jitter" }, script.jitter_type),
+        yaw_jitter_val = script:call(ui.new_slider, { "afa_default_yaw_jitter_value", nil }, -180, 180, 0, true, "°"),
+
+        crooked = script:call(ui.new_multiselect, { "afa_default_crooked", "Crooked" }, script.crooked_stand_type),
+        ubl = script:call(ui.new_checkbox, { "afa_default_979_force", "Force balance adjust" }),
+        ubl_val = script:call(ui.new_slider, { "afa_default_anti979_value", nil }, 0, 30, 30, true, "°"),
+    },
+
     ["Running"] = {
-        aa_mode = ui.new_multiselect("AA", "Other", set_element("Anti-aimbot mode", "aa_mode_running"), aa_type),
-        body_lean = ui.new_slider("AA", "Other", set_element("Body lean", "bodylean_running"), 0, 100, 55, true, "%"),
-        body_lean_inv = ui.new_slider("AA", "Other", set_element(nil, "bodylean_inv_running"), 0, 100, 55, true, "%"),
-        jitter_type = ui.new_combobox("AA", "Other", set_element("Jitter mode", "jitter_type_running"), jitter_type),
-        jitter_grad = ui.new_slider("AA", "Other", set_element(nil, "jitter_running"), 0, 180, 5, true, "°"),
-        shift_onshot = ui.new_checkbox("AA", "Other", set_element("Shift onshot", "shift_onshot_running")),
-        -- desync = ui.new_checkbox("AA", "Other", set_element("Desync", "desync_running"))
-    }, 
-    
+        base = script:call(ui.new_combobox, { "afa_running_yaw_base", "Yaw base" }, script.yaw_base),
+        
+        body_lean = script:call(ui.new_slider, { "afa_running_body_lean", "Body lean" }, 0, 100, 55, true, "%"),
+        body_lean_inv = script:call(ui.new_slider, { "afa_running_body_lean_inverse", nil }, 0, 100, 55, true, "%"),
+
+        yaw_jitter = script:call(ui.new_combobox, { "afa_running_yaw_jitter", "Yaw jitter" }, script.jitter_type),
+        yaw_jitter_val = script:call(ui.new_slider, { "afa_running_yaw_jitter_value", nil }, -180, 180, 0, true, "°"),
+
+        crooked = script:call(ui.new_multiselect, { "afa_running_crooked", "Crooked" }, script.crooked_type),
+    },
+
     ["Slow motion"] = {
-        aa_mode = ui.new_multiselect("AA", "Other", set_element("Anti-aimbot mode", "aa_mode_slowmo"), aa_type),
-        body_lean = ui.new_slider("AA", "Other", set_element("Body lean", "bodylean_slowmo"), 0, 100, 55, true, "%"),
-        body_lean_inv = ui.new_slider("AA", "Other", set_element(nil, "bodylean_inv_slowmo"), 0, 100, 55, true, "%"),
-        jitter_type = ui.new_combobox("AA", "Other", set_element("Jitter mode", "jitter_type_slowmo"), jitter_type),
-        jitter_grad = ui.new_slider("AA", "Other", set_element(nil, "jitter_slowmo"), 0, 180, 5, true, "°"),
-        shift_onshot = ui.new_checkbox("AA", "Other", set_element("Shift onshot", "shift_onshot_slowmo")),
-        -- desync = ui.new_checkbox("AA", "Other", set_element("Desync", "desync_slowmo"))
+        base = script:call(ui.new_combobox, { "afa_slowmo_yaw_base", "Yaw base" }, script.yaw_base),
+        
+        body_lean = script:call(ui.new_slider, { "afa_slowmo_body_lean", "Body lean" }, 0, 100, 55, true, "%"),
+        body_lean_inv = script:call(ui.new_slider, { "afa_slowmo_body_lean_inverse", nil }, 0, 100, 55, true, "%"),
+
+        yaw_jitter = script:call(ui.new_combobox, { "afa_slowmo_yaw_jitter", "Yaw jitter" }, script.jitter_type),
+        yaw_jitter_val = script:call(ui.new_slider, { "afa_slowmo_yaw_jitter_value", nil }, -180, 180, 0, true, "°"),
+
+        crooked = script:call(ui.new_multiselect, { "afa_slowmo_crooked", "Crooked" }, script.crooked_type),
     },
 
     ["Air"] = {
-        aa_mode = ui.new_multiselect("AA", "Other", set_element("Anti-aimbot mode", "aa_mode_air"), aa_type),
-        body_lean = ui.new_slider("AA", "Other", set_element("Body lean", "bodylean_air"), 0, 100, 55, true, "%"),
-        body_lean_inv = ui.new_slider("AA", "Other", set_element(nil, "bodylean_inv_air"), 0, 100, 55, true, "%"),
-        jitter_type = ui.new_combobox("AA", "Other", set_element("Jitter mode", "jitter_type_air"), jitter_type),
-        jitter_grad = ui.new_slider("AA", "Other", set_element(nil, "jitter_air"), 0, 180, 5, true, "°"),
-        shift_air_anims = ui.new_checkbox("AA", "Other", set_element("Shift air animations", "shift_air_anims")),
-        -- desync = ui.new_checkbox("AA", "Other", set_element("Desync", "desync_air"))
-    }
+        base = script:call(ui.new_combobox, { "afa_air_yaw_base", "Yaw base" }, script.yaw_base),
+        
+        body_lean = script:call(ui.new_slider, { "afa_air_body_lean", "Body lean" }, 0, 100, 55, true, "%"),
+        body_lean_inv = script:call(ui.new_slider, { "afa_air_body_lean_inverse", nil }, 0, 100, 55, true, "%"),
+
+        yaw_jitter = script:call(ui.new_combobox, { "afa_air_yaw_jitter", "Yaw jitter" }, script.jitter_type),
+        yaw_jitter_val = script:call(ui.new_slider, { "afa_air_yaw_jitter_value", nil }, -180, 180, 0, true, "°"),
+
+        crooked = script:call(ui.new_multiselect, { "afa_air_crooked", "Crooked" }, script.crooked_type),
+    },
+
+    ["Manual"] = {
+        body_lean = script:call(ui.new_slider, { "afa_manual_body_lean", "Body lean" }, 0, 100, 55, true, "%"),
+        body_lean_inv = script:call(ui.new_slider, { "afa_manual_body_lean_inverse", nil }, 0, 100, 55, true, "%"),
+
+        yaw_jitter = script:call(ui.new_combobox, { "afa_manual_yaw_jitter", "Yaw jitter" }, script.jitter_type),
+        yaw_jitter_val = script:call(ui.new_slider, { "afa_manual_yaw_jitter_value", nil }, -180, 180, 0, true, "°"),
+
+        crooked = script:call(ui.new_multiselect, { "afa_manual_crooked", "Crooked" }, script.crooked_type),
+    },
 }
 
-local function get_condition(list, id)
-    for k in pairs(list) do
-        if k == id then
-            return list[k]
-        end
+local cache = { }
+local ui_get, ui_set = ui.get, ui.set
+local entity_get_prop = entity.get_prop
+local entity_get_local_player = entity.get_local_player
+
+local multi_exec = function(func, list)
+    if func == nil then
+        return
     end
-
-    return nil
-end
-
-local function ui_mset(list)
+    
     for ref, val in pairs(list) do
-        ui_set(ref, val)
+        func(ref, val)
     end
 end
 
-local function compare(tab, val)
+local compare = function(tab, val)
     for i = 1, #tab do
         if tab[i] == val then
             return true
@@ -103,47 +147,37 @@ local function compare(tab, val)
     return false
 end
 
-local function _callback()
-    local itself = ui_get(active)
-    local cond = ui_get(condition)
+local cache_process = function(condition, should_call, a, b)
+    local name = tostring(condition)
+    cache[name] = cache[name] ~= nil and cache[name] or ui_get(condition)
 
-    local setup_menu = function(list, id, visible)
-        for k in pairs(list) do
-            local mode = list[k]
-            local active = k == id
-
-            for j in pairs(mode) do
-                local _act = true
-
-                local jitter_list = { "jitter_grad", "jitter_type" }
-                local jitter_active = compare(ui_get(mode.aa_mode), aa_type[2])
-
-                if compare(jitter_list, j) and not jitter_active then
-                    _act = false
-                end
-
-                ui.set_visible(mode[j], active and visible and _act)
+    if should_call then
+        if type(a) == "function" then a() else
+            ui_set(condition, a)
+        end
+    else
+        if cache[name] ~= nil then
+            if b ~= nil and type(b) == "function" then
+                b(cache[name])
+            else
+                ui_set(condition, cache[name])
             end
+
+            cache[name] = nil
         end
     end
-
-    ui.set_visible(condition, itself)
-
-    setup_menu(modes, cond, itself)
 end
 
-local function get_flags(cm)
+local get_flags = function(cm)
     local state = "Default"
-    local get_prop = function(...)
-        return entity.get_prop(entity.get_local_player(), ...)
-    end
+    local me = entity_get_local_player()
 
-    local flags = get_prop("m_fFlags")
-    local x, y, z = get_prop("m_vecVelocity")
+    local flags = entity_get_prop(me, "m_fFlags")
+    local x, y, z = entity_get_prop(me, "m_vecVelocity")
     local velocity = math.floor(math.min(10000, math.sqrt(x^2 + y^2) + 0.5))
 
     if bit.band(flags, 1) ~= 1 or (cm and cm.in_jump == 1) then state = "Air" else
-        if velocity > 1 or (cm ~= nil and (cm.sidemove ~= 0 or cm.forwardmove ~= 0)) then
+        if velocity > 1 or (cm.sidemove ~= 0 or cm.forwardmove ~= 0) then
             if ui_get(slowmo) and ui_get(slowmo_key) then 
                 state = "Slow motion"
             else
@@ -155,109 +189,263 @@ local function get_flags(cm)
     end
 
     return {
-        -- max_desync = (59 - 58 * velocity / 580),
         velocity = velocity,
         state = state
     }
 end
 
-local cache = { }
-local cache_process = function(name, condition, should_call, VAR)
-    local hotkey_modes = {
-        [0] = "always on",
-        [1] = "on hotkey",
-        [2] = "toggle",
-        [3] = "off hotkey"
-    }
+local calculate_body_lean = function(inverted, data)
+    local inflean = inverted and ui_get(data[1]) or ui_get(data[2])
+    local lean = 59 - (0.59 * inflean)
 
-    local _cond = ui_get(condition)
-    local _type = type(_cond)
+    return inverted and -lean or lean
+end
 
-    local value, mode = ui_get(condition)
-    local finder = mode ~= nil and mode or (_type == "boolean" and tostring(_cond) or _cond)
-    cache[name] = cache[name] ~= nil and cache[name] or finder
+local bind_system = {
+    clr = { b = false, l = false, r = false }
+}
 
-    if should_call then ui_set(condition, mode ~= nil and hotkey_modes[VAR] or VAR) else
-        if cache[name] ~= nil then
-            local _cache = cache[name]
-            
-            if _type == "boolean" then
-                if _cache == "true" then _cache = true end
-                if _cache == "false" then _cache = false end
-            end
+bind_system.update = function()
+    ui_set(manual_left_dir, "On hotkey")
+    ui_set(manual_right_dir, "On hotkey")
+    ui_set(manual_backward_dir, "On hotkey")
 
-            ui_set(condition, mode ~= nil and hotkey_modes[_cache] or _cache)
-            cache[name] = nil
+    local m_state = ui_get(manual_state)
+
+    local left_state = ui_get(manual_left_dir)
+    local right_state = ui_get(manual_right_dir)
+    local backward_state = ui_get(manual_backward_dir)
+
+    if  left_state == bind_system.clr.l and 
+        right_state == bind_system.clr.r and
+        backward_state == bind_system.clr.b then
+        return
+    end
+
+    bind_system.clr.l = left_state
+    bind_system.clr.r = right_state
+    bind_system.clr.b = backward_state
+
+    if (left_state and m_state == 1) or (right_state and m_state == 2) or (backward_state and m_state == 3) then
+        ui_set(manual_state, 0)
+        return
+    end
+
+    if left_state and m_state ~= 1 then
+        ui_set(manual_state, 1)
+    end
+
+    if right_state and m_state ~= 2 then
+        ui_set(manual_state, 2)
+    end
+
+    if backward_state and m_state ~= 3 then
+        ui_set(manual_state, 3)
+    end
+end
+
+local bind_callback = function(list, callback, elem)
+    for k in pairs(list) do
+        if list[k][elem] ~= nil then
+            ui.set_callback(list[k][elem], callback)
         end
     end
 end
 
-local can_shift = function()
-    local me = entity.get_local_player()
-    local weapon = entity.get_prop(me, "m_hActiveWeapon")
-    local item = bit.band(entity.get_prop(weapon, "m_iItemDefinitionIndex"), 0xFFFF)
+local menu_callback = function(e, menu_call)
+    local visible = not ui_get(active)
+    local manual = ui_get(manual_aa)
+    local bnum = ui_get(body)
 
-    if ui_get(duck_peek_assist) or item == 64 or (item > 42 and item < 49) then
-        return false
+    ui_set(switch_hk, "Toggle")
+
+    local setup_menu = function(list, current_condition, vis)
+        for k in pairs(list) do
+            local mode = list[k]
+            local active = k == current_condition
+
+            for j in pairs(mode) do
+                local set_element = true
+
+                if j == "yaw_jitter_val" and ui_get(mode["yaw_jitter"]) == "Off" then 
+                    set_element = false
+                end
+
+                if k == "Default" then
+                    local balance_adjust_exploiting = compare(ui_get(mode["crooked"]), script.crooked_stand_type[3])
+
+                    if  j == "ubl" and balance_adjust_exploiting or 
+                        j == "ubl_val" and not balance_adjust_exploiting then
+                        set_element = false
+                    end
+                end
+
+                ui.set_visible(mode[j], active and vis and set_element)
+            end
+        end
     end
 
-    return true
+    if e == nil then visible = true end
+    if menu_call == nil then
+        setup_menu(menu_data, ui_get(condition), not visible)
+    end
+
+    multi_exec(ui.set_visible, {
+        [manual_aa] = not visible,
+
+        [picker] = not visible,
+        [arrow_dst] = not visible and manual,
+        [manual_left_dir] = not visible and manual,
+        [manual_right_dir] = not visible and manual,
+        [manual_backward_dir] = not visible and manual,
+
+        [condition] = not visible,
+        [manual_state] = false,
+    })
+
+    if script._debug then
+        visible = true
+    end
+
+    multi_exec(ui.set_visible, {
+        [yaw_num] = visible and ui_get(yaw) ~= "Off",
+
+        [yaw_jt] = visible, 
+        [yaw_jt_num] = visible and ui_get(yaw_jt) ~= "Off",
+
+        [body] = visible,
+        [body_num] = visible and bnum ~= "Off" and bnum ~= "Opposite",
+
+        [fr_bodyyaw] = visible,
+        [lower_body_yaw] = visible,
+        [limit] = visible, 
+        [twist] = visible,
+    })
 end
 
-client.set_event_callback("setup_command", function(cmd)
-    local cmd_active, inversed = 
-        ui_get(active),
-        ui_get(inverse_key)
-        ui_set(inverse_key, "Toggle")
+client.set_event_callback("shutdown", menu_callback)
+client.set_event_callback("predict_command", function()
+    cache_process(flag_limit, false)
+end)
 
-    local data = get_flags(cmd)
-    local current_condition = get_condition(modes, data.state)
-    local lean = 59 - (0.59 * ui_get(inversed and current_condition.body_lean or current_condition.body_lean_inv))
-
-    local should_shift = data.state ~= "Air" and ui_get(current_condition.shift_onshot) and can_shift()
-    local should_shift_air = data.state == "Air" and ui_get(current_condition.shift_air_anims)
-
-    local inversed = inversed or compare(ui_get(fr), "Default") and ui_get(fr_key)
-    local antiaim_mode, _yaw = ui_get(current_condition.aa_mode), ui_get(yaw)
-
-    cache_process("onshot", onshot, cmd_active and should_shift, true)
-    cache_process("onshot_hk", onshot_hk, cmd_active and should_shift, "Always on")
-    cache_process("air_duck", air_duck, cmd_active and should_shift_air, "Spam")
-    cache_process("fr_bodyyaw", fr_bodyyaw, cmd_active and ui_get(fr_key), false)
-
-    if not cmd_active then 
+client.set_event_callback("setup_command", function(e)
+    if not ui_get(active) then
         return
     end
 
-    local jitter_data = {
-        mode = compare(antiaim_mode, aa_type[2]),
-        type = ui_get(current_condition.jitter_type),
-        grad = ui_get(current_condition.jitter_grad)
-    }
+    local data = get_flags(e)
+    local direction = ui_get(manual_state)
 
-    ui_mset({
-        [yaw] = compare({ "180", "180 Z" }, _yaw) and _yaw or '180',
-        [body] = (compare(antiaim_mode, aa_type[1]) or ui_get(fr_key)) and 'Static' or 'Opposite',
-    
-        -- Body lean
-        [yaw_num] = inversed and -lean or lean,
-        [body_num] = inversed and -179 or 179,
-        [yaw_jitter] = jitter_data.mode and jitter_data.type or 'Off',
-        [yaw_jitter_num] = inversed and -jitter_data.grad or jitter_data.grad,
+    local current_yaw = ui_get(yaw)
+    local end_yaw = compare({ "180", "180 Z" }, current_yaw) and current_yaw or "180"
+
+    local state = (direction ~= 0 and not fr_active) and "Manual" or data.state
+    local stack = menu_data[state]
+
+    if stack == nil then
+        return
+    end
+
+    local inverted = ui_get(switch_hk)
+    local body_lean = calculate_body_lean(inverted, {
+        stack.body_lean,
+        stack.body_lean_inv
     })
 
-    if data.state == "Default" and ui_get(current_condition.static_body) then
-        local speed_th = cmd.in_duck ~= 0 and 2.941177 or 1.000001
-        local sm = cmd.command_number % 4 < 2 and -speed_th or speed_th
+    local manual_yaw = {
+        [0] = direction ~= 0 and "0" or body_lean,
+        
+        [1] = -90 + body_lean, [2] = 90 + body_lean,
+        [3] = body_lean,
+    }
 
-        cmd.sidemove = cmd.sidemove ~= 0 and cmd.sidemove or sm
+    -- Anti-aimbot modes
+    local choked_cmds = e.chokedcommands
+    local in_fduck, crooked = 
+        ui_get(duck_assist),
+        ui_get(stack.crooked)
+
+    local dsn_ot = compare(crooked, script.crooked_type[2]) and not in_fduck
+
+    if not dsn_ot then script.treshold = false else
+        if choked_cmds == 0 then
+            script.treshold = not script.treshold
+        end
     end
+
+    local holding_exp = 
+        ui_get(onshot) and ui_get(onshot_hk) or 
+        ui_get(dt) and ui_get(dt_hk)
+
+    cache_process(flag_limit, dsn_ot and script.treshold and not holding_exp, 1)
+
+    local stand_still = data.state == "Default"
+
+    local balance_adj = {
+        lby = (stack.ubl ~= nil and ui_get(stack.ubl)) and "Opposite" or "Eye yaw",
+        limit = 60
+    }
+
+    if stand_still and compare(crooked, script.crooked_stand_type[3]) then
+        manual_yaw[0] = manual_yaw[0] / 3
+
+        balance_adj = {
+            lby = "Opposite",
+            limit = 30 - ui_get(stack.ubl_val)
+        }
+    end
+
+    multi_exec(ui_set, {
+        [yaw] = end_yaw,
+        [body] = "Static",
+        
+        [yaw_num] = manual_yaw[direction],
+        [body_num] = inverted and -180 or 180,
+
+        [yaw_jt] = ui_get(stack.yaw_jitter),
+        [yaw_jt_num] = ui_get(stack.yaw_jitter_val),
+
+        [base] = state == "Manual" and "Local view" or ui_get(stack.base),
+        [twist] = compare(crooked, script.crooked_type[1]),
+
+        [lower_body_yaw] = balance_adj.lby,
+        [limit] = balance_adj.limit,
+
+        [fr_bodyyaw] = false,
+    })
 end)
 
-_callback(active)
-ui.set_callback(active, _callback)
-ui.set_callback(condition, _callback)
-ui.set_callback(modes["Default"].aa_mode, _callback)
-ui.set_callback(modes["Running"].aa_mode, _callback)
-ui.set_callback(modes["Air"].aa_mode, _callback)
-ui.set_callback(modes["Slow motion"].aa_mode, _callback)
+client.set_event_callback("paint", function()
+    menu_callback(true, true)
+
+    local me = entity_get_local_player()
+    
+    if not ui_get(active) or not ui_get(manual_aa) or not entity.is_alive(me) then
+        return
+    end
+
+    bind_system:update()
+    local w, h = client.screen_size()
+    local r, g, b, a = ui_get(picker)
+
+    local m_state = ui_get(manual_state)
+    local fr_active = #ui_get(fr) ~= 0 and ui_get(fr_hk)
+    local onshot_active = ui_get(onshot) and ui_get(onshot_hk)
+
+    local realtime = globals.realtime() % 3
+    local distance = (w/2) / 210 * ui_get(arrow_dst)
+    local alpha = not onshot_active and math.floor(math.sin(realtime * 4) * (a/2-1) + a/2) or a
+
+    if m_state == 1 or fr_active then renderer.text(w/2 - distance, h / 2 - 1, r, g, b, alpha, "+c", 0, "◄") end
+    if m_state == 2 or fr_active then renderer.text(w/2 + distance, h / 2 - 1, r, g, b, alpha, "+c", 0, "►") end
+
+    if m_state == 3 and not fr_active then renderer.text(w/2, h / 2 + distance, r, g, b, alpha, "+c", 0, "▼") end
+end)
+
+menu_callback(active)
+bind_callback(menu_data, menu_callback, "yaw_jitter")
+bind_callback(menu_data, menu_callback, "crooked")
+
+ui.set_callback(active, menu_callback)
+ui.set_callback(manual_aa, menu_callback)
+ui.set_callback(condition, menu_callback)
