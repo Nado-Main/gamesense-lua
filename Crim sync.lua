@@ -1,7 +1,7 @@
 local script = {
     _debug = false,
 
-    menu = { "AA", "Anti-aimbot angles" --[[ (Other) ]] },
+    menu = { "AA", "Other" --[[ (Anti-aimbot angles) ]] },
     conditions = { "Default", "Running", "Slow motion", "Air", "Manual" },
 
     yaw_base = { "Local view", "At targets", "Movement direction" },
