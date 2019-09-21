@@ -1,7 +1,7 @@
 local script = {
     _debug = false,
 
-    menu = { "AA", "Other" --[[ (Anti-aimbot angles) ]] },
+    menu = { "AA", "Anti-aimbot angles" --[[ (Other) ]] },
     conditions = { "Default", "Running", "Slow motion", "Air", "Manual" },
 
     yaw_base = { "Local view", "At targets", "Movement direction" },
@@ -342,9 +342,9 @@ end
 
 client.set_event_callback("shutdown", menu_callback)
 client.set_event_callback("predict_command", function()
-    cache_process(flag_active, false, false)
-    cache_process(flag_limit, false, 1)
-    cache_process(body, false, "Off")
+    cache_process(flag_active, false)
+    cache_process(flag_limit, false)
+    cache_process(body, false)
 end)
 
 client.set_event_callback("setup_command", function(e)
