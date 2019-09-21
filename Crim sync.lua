@@ -1,7 +1,7 @@
 local script = {
     _debug = false,
 
-    menu = { "AA", "Other" },
+    menu = { "AA", "Other" --[[ (Anti-aimbot angles) ]] },
     conditions = { "Default", "Running", "Slow motion", "Air", "Manual" },
 
     yaw_base = { "Local view", "At targets", "Movement direction" },
@@ -9,6 +9,7 @@ local script = {
 
     crooked_type = { "Twist", "Desync" },
     crooked_stand_type = { "Twist", "Desync", "Anti balance adjust" },
+    desync_disablers = { "Fake duck", "Tickbase exploits" },
 
     treshold = false,
 }
@@ -55,6 +56,7 @@ local fr_bodyyaw = ui.reference("AA", "Anti-aimbot angles", "Freestanding body y
 local fr, fr_hk = ui.reference("AA", "Anti-aimbot angles", "Freestanding")
 local slowmo, slowmo_key = ui.reference("AA", "Other", "Slow motion")
 
+local flag_active = ui.reference("AA", "Fake lag", "Enabled")
 local flag_limit = ui.reference("AA", "Fake lag", "Limit")
 local onshot, onshot_hk = ui.reference("AA", "Other", "On shot anti-aim")
 local dt, dt_hk = ui.reference("RAGE", "Other", "Double tap")
@@ -71,6 +73,7 @@ local menu_data = {
         yaw_jitter_val = script:call(ui.new_slider, { "afa_default_yaw_jitter_value", nil }, -180, 180, 0, true, "°"),
 
         crooked = script:call(ui.new_multiselect, { "afa_default_crooked", "Crooked" }, script.crooked_stand_type),
+
         ubl = script:call(ui.new_checkbox, { "afa_default_979_force", "Force balance adjust" }),
         ubl_val = script:call(ui.new_slider, { "afa_default_anti979_value", nil }, 0, 30, 30, true, "°"),
     },
@@ -120,6 +123,8 @@ local menu_data = {
 
         crooked = script:call(ui.new_multiselect, { "afa_manual_crooked", "Crooked" }, script.crooked_type),
     },
+
+    desync_disablers = script:call(ui.new_multiselect, { "afa_desync_disablers", "Crooked desync disablers" }, script.desync_disablers),
 }
 
 local cache = { }
@@ -246,7 +251,7 @@ end
 
 local bind_callback = function(list, callback, elem)
     for k in pairs(list) do
-        if list[k][elem] ~= nil then
+        if type(list[k]) == "table" and list[k][elem] ~= nil then
             ui.set_callback(list[k][elem], callback)
         end
     end
@@ -260,29 +265,40 @@ local menu_callback = function(e, menu_call)
     ui_set(switch_hk, "Toggle")
 
     local setup_menu = function(list, current_condition, vis)
+        local ds_count = 0
+
         for k in pairs(list) do
             local mode = list[k]
             local active = k == current_condition
 
-            for j in pairs(mode) do
-                local set_element = true
+            if type(mode) == "table" then
+                for j in pairs(mode) do
+                    local set_element = true
+                    local crooked = ui_get(mode["crooked"])
 
-                if j == "yaw_jitter_val" and ui_get(mode["yaw_jitter"]) == "Off" then 
-                    set_element = false
-                end
-
-                if k == "Default" then
-                    local balance_adjust_exploiting = compare(ui_get(mode["crooked"]), script.crooked_stand_type[3])
-
-                    if  j == "ubl" and balance_adjust_exploiting or 
-                        j == "ubl_val" and not balance_adjust_exploiting then
+                    if j == "yaw_jitter_val" and ui_get(mode["yaw_jitter"]) == "Off" then 
                         set_element = false
                     end
-                end
 
-                ui.set_visible(mode[j], active and vis and set_element)
+                    if k == "Default" then
+                        local balance_adjust_exploiting = compare(crooked, script.crooked_stand_type[3])
+
+                        if  j == "ubl" and balance_adjust_exploiting or 
+                            j == "ubl_val" and not balance_adjust_exploiting then
+                            set_element = false
+                        end
+                    end
+
+                    if compare(crooked, script.crooked_type[2]) then
+                        ds_count = ds_count + 1
+                    end
+
+                    ui.set_visible(mode[j], active and vis and set_element)
+                end
             end
         end
+
+        ui.set_visible(list.desync_disablers, ds_count > 0)
     end
 
     if e == nil then visible = true end
@@ -308,6 +324,7 @@ local menu_callback = function(e, menu_call)
     end
 
     multi_exec(ui.set_visible, {
+        [base] = visible,
         [yaw_num] = visible and ui_get(yaw) ~= "Off",
 
         [yaw_jt] = visible, 
@@ -325,7 +342,9 @@ end
 
 client.set_event_callback("shutdown", menu_callback)
 client.set_event_callback("predict_command", function()
-    cache_process(flag_limit, false)
+    cache_process(flag_active, false, false)
+    cache_process(flag_limit, false, 1)
+    cache_process(body, false, "Off")
 end)
 
 client.set_event_callback("setup_command", function(e)
@@ -361,32 +380,14 @@ client.set_event_callback("setup_command", function(e)
 
     -- Anti-aimbot modes
     local choked_cmds = e.chokedcommands
-    local in_fduck, crooked = 
-        ui_get(duck_assist),
-        ui_get(stack.crooked)
-
-    local dsn_ot = compare(crooked, script.crooked_type[2]) and not in_fduck
-
-    if not dsn_ot then script.treshold = false else
-        if choked_cmds == 0 then
-            script.treshold = not script.treshold
-        end
-    end
-
-    local holding_exp = 
-        ui_get(onshot) and ui_get(onshot_hk) or 
-        ui_get(dt) and ui_get(dt_hk)
-
-    cache_process(flag_limit, dsn_ot and script.treshold and not holding_exp, 1)
-
-    local stand_still = data.state == "Default"
+    local crooked = ui_get(stack.crooked)
 
     local balance_adj = {
         lby = (stack.ubl ~= nil and ui_get(stack.ubl)) and "Opposite" or "Eye yaw",
         limit = 60
     }
 
-    if stand_still and compare(crooked, script.crooked_stand_type[3]) then
+    if data.state == "Default" and compare(crooked, script.crooked_stand_type[3]) then
         manual_yaw[0] = manual_yaw[0] / 3
 
         balance_adj = {
@@ -413,6 +414,26 @@ client.set_event_callback("setup_command", function(e)
 
         [fr_bodyyaw] = false,
     })
+
+    -- "Desync" feature
+    local disablers = ui_get(menu_data.desync_disablers)
+    local in_hexp = ui_get(onshot) and ui_get(onshot_hk) or ui_get(dt) and ui_get(dt_hk)
+
+    local in_fduck = compare(disablers, script.desync_disablers[1]) and ui_get(duck_assist)
+    local holding_exp = compare(disablers, script.desync_disablers[2]) and in_hexp
+    
+    local dsn_ot = compare(crooked, script.crooked_type[2])
+
+    if not dsn_ot or in_fduck or holding_exp then script.treshold = false else
+        if choked_cmds == 0 then
+            script.treshold = not script.treshold
+        end
+    end
+
+    local _scache = dsn_ot and script.treshold
+    cache_process(flag_active, _scache, false)
+    cache_process(flag_limit, _scache, 1)
+    cache_process(body, _scache, "Off")
 end)
 
 client.set_event_callback("paint", function()
@@ -449,3 +470,5 @@ bind_callback(menu_data, menu_callback, "crooked")
 ui.set_callback(active, menu_callback)
 ui.set_callback(manual_aa, menu_callback)
 ui.set_callback(condition, menu_callback)
+
+ui.set(menu_data.desync_disablers, script.desync_disablers)
