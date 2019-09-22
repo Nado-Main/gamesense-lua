@@ -1,7 +1,7 @@
 local script = {
     _debug = false,
 
-    menu = { "AA", "Other" --[[ (Anti-aimbot angles) ]] },
+    menu = { "AA", "Anti-aimbot angles" --[[ (Other) ]] },
     conditions = { "Default", "Running", "Slow motion", "Air", "Manual" },
 
     yaw_base = { "Local view", "At targets", "Movement direction" },
@@ -207,7 +207,9 @@ local calculate_body_lean = function(inverted, data)
 end
 
 local bind_system = {
-    clr = { b = false, l = false, r = false }
+    left = false,
+    right = false,
+    back = false,
 }
 
 bind_system.update = function()
@@ -216,20 +218,21 @@ bind_system.update = function()
     ui_set(manual_backward_dir, "On hotkey")
 
     local m_state = ui_get(manual_state)
+    local menu_open = ui.is_menu_open()
 
     local left_state = ui_get(manual_left_dir)
     local right_state = ui_get(manual_right_dir)
     local backward_state = ui_get(manual_backward_dir)
 
-    if  left_state == bind_system.clr.l and 
-        right_state == bind_system.clr.r and
-        backward_state == bind_system.clr.b then
+    if  menu_open or left_state == bind_system.left and 
+        right_state == bind_system.right and
+        backward_state == bind_system.back then
         return
     end
 
-    bind_system.clr.l = left_state
-    bind_system.clr.r = right_state
-    bind_system.clr.b = backward_state
+    bind_system.left = left_state
+    bind_system.right = right_state
+    bind_system.back = backward_state
 
     if (left_state and m_state == 1) or (right_state and m_state == 2) or (backward_state and m_state == 3) then
         ui_set(manual_state, 0)
@@ -260,6 +263,8 @@ end
 local menu_callback = function(e, menu_call)
     local visible = not ui_get(active)
     local manual = ui_get(manual_aa)
+
+    local byaw = ui_get(yaw)
     local bnum = ui_get(body)
 
     ui_set(switch_hk, "Toggle")
@@ -325,10 +330,10 @@ local menu_callback = function(e, menu_call)
 
     multi_exec(ui.set_visible, {
         [base] = visible,
-        [yaw_num] = visible and ui_get(yaw) ~= "Off",
+        [yaw_num] = visible and byaw ~= "Off",
 
-        [yaw_jt] = visible, 
-        [yaw_jt_num] = visible and ui_get(yaw_jt) ~= "Off",
+        [yaw_jt] = visible and byaw ~= "Off", 
+        [yaw_jt_num] = visible and byaw ~= "Off" and ui_get(yaw_jt) ~= "Off",
 
         [body] = visible,
         [body_num] = visible and bnum ~= "Off" and bnum ~= "Opposite",
@@ -373,7 +378,6 @@ client.set_event_callback("setup_command", function(e)
 
     local manual_yaw = {
         [0] = direction ~= 0 and "0" or body_lean,
-        
         [1] = -90 + body_lean, [2] = 90 + body_lean,
         [3] = body_lean,
     }
@@ -389,7 +393,6 @@ client.set_event_callback("setup_command", function(e)
 
     if data.state == "Default" and compare(crooked, script.crooked_stand_type[3]) then
         manual_yaw[0] = manual_yaw[0] / 3
-
         balance_adj = {
             lby = "Opposite",
             limit = 30 - ui_get(stack.ubl_val)
