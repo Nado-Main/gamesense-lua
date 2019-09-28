@@ -1,3 +1,4 @@
+local cache = nil
 local set_dmg_list = function()
     local damage_list = { }
 
@@ -13,36 +14,33 @@ local set_dmg_list = function()
     return damage_list
 end
 
-local data = {
-    var_cached = nil,
-    minimum_damage = ui.reference("RAGE", "Aimbot", "Minimum damage"),
+local minimum_damage = ui.reference("RAGE", "Aimbot", "Minimum damage")
+local is_active = ui.new_checkbox("RAGE", "Other", "Override minimum damage")
+local override_key = ui.new_hotkey("RAGE", "Other", "\n damage_override_key", true)
+local damage_value = ui.new_slider("RAGE", "Other", "\n damage_override_value", 0, 126, 55, true, "", 1, set_dmg_list())
 
-    is_active = ui.new_checkbox("RAGE", "Other", "Override minimum damage"),
-    override_key = ui.new_hotkey("RAGE", "Other", "\n damage_override_key", true),
-    damage_value = ui.new_slider("RAGE", "Other", "\n damage_override_value", 0, 126, 55, true, "", 1, set_dmg_list())
-}
+local ui_get, ui_set, is_alive = ui.get, ui.set, entity.is_alive
 
-data.set_visible = function(_self)
-    if not _self then
-        ui.set_callback(data.is_active, data.set_visible)
-    end
-
-    ui.set_visible(data.damage_value, ui.get(data.is_active))
+local function set_visible()
+    ui.set_visible(damage_value, ui_get(is_active))
 end
 
-data.callback = function()
-    data.var_cached = data.var_cached ~= nil and data.var_cached or ui.get(data.minimum_damage)
+set_visible()
+ui.set_callback(is_active, set_visible)
 
-    if ui.get(data.is_active) and ui.get(data.override_key) then
-        ui.set(data.minimum_damage, ui.get(data.damage_value))
-        renderer.indicator(255, 255, 255, 150, "DMG")
+client.set_event_callback("paint", function()
+    local active = ui_get(is_active) and ui_get(override_key)
+    local alive = is_alive(entity.get_local_player())
+
+    cache = cache or ui_get(minimum_damage)
+
+    if active and alive then
+        ui_set(minimum_damage, ui_get(damage_value))
+        renderer.indicator(255, 255, 255, 150, "DMG: " .. ui_get(minimum_damage))
     else
-        if data.var_cached ~= nil then
-            ui.set(data.minimum_damage, data.var_cached)
-            data.var_cached = nil
+        if cache ~= nil then
+            ui_set(minimum_damage, cache)
+            cache = nil
         end
     end
-end
-
-data.set_visible()
-client.set_event_callback("paint", data.callback)
+end)
