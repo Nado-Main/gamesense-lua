@@ -19,7 +19,7 @@ function script:call(func, name, ...)
         return
     end
 
-    local end_name = name[2] == nil and "" or name[2]
+    local end_name = name[2] or ""
 
     if name[1] ~= nil then
         end_name = end_name ~= "" and (end_name .. " ") or end_name
@@ -154,7 +154,8 @@ end
 
 local cache_process = function(condition, should_call, a, b)
     local name = tostring(condition)
-    cache[name] = cache[name] ~= nil and cache[name] or ui_get(condition)
+
+    cache[name] = cache[name] or ui_get(condition)
 
     if should_call then
         if type(a) == "function" then a() else
@@ -212,27 +213,28 @@ local bind_system = {
     back = false,
 }
 
-bind_system.update = function()
+function bind_system:update()
     ui_set(manual_left_dir, "On hotkey")
     ui_set(manual_right_dir, "On hotkey")
     ui_set(manual_backward_dir, "On hotkey")
 
     local m_state = ui_get(manual_state)
-    local menu_open = ui.is_menu_open()
 
-    local left_state = ui_get(manual_left_dir)
-    local right_state = ui_get(manual_right_dir)
-    local backward_state = ui_get(manual_backward_dir)
+    local left_state, right_state, backward_state = 
+        ui_get(manual_left_dir), 
+        ui_get(manual_right_dir),
+        ui_get(manual_backward_dir)
 
-    if  menu_open or left_state == bind_system.left and 
-        right_state == bind_system.right and
-        backward_state == bind_system.back then
+    if  left_state == self.left and 
+        right_state == self.right and
+        backward_state == self.back then
         return
     end
 
-    bind_system.left = left_state
-    bind_system.right = right_state
-    bind_system.back = backward_state
+    self.left, self.right, self.back = 
+        left_state, 
+        right_state, 
+        backward_state
 
     if (left_state and m_state == 1) or (right_state and m_state == 2) or (backward_state and m_state == 3) then
         ui_set(manual_state, 0)
@@ -303,7 +305,7 @@ local menu_callback = function(e, menu_call)
             end
         end
 
-        ui.set_visible(list.desync_disablers, ds_count > 0)
+        ui.set_visible(list.desync_disablers, vis and ds_count > 0)
     end
 
     if e == nil then visible = true end
@@ -358,12 +360,11 @@ client.set_event_callback("setup_command", function(e)
     end
 
     local data = get_flags(e)
-    local direction = ui_get(manual_state)
-
-    local current_yaw = ui_get(yaw)
-    local end_yaw = compare({ "180", "180 Z" }, current_yaw) and current_yaw or "180"
+    local direction, _yaw = ui_get(manual_state), ui_get(yaw)
 
     local state = (direction ~= 0 and not fr_active) and "Manual" or data.state
+    local end_yaw = compare({ "180", "180 Z" }, _yaw) and _yaw or "180"
+
     local stack = menu_data[state]
 
     if stack == nil then
@@ -383,8 +384,9 @@ client.set_event_callback("setup_command", function(e)
     }
 
     -- Anti-aimbot modes
-    local choked_cmds = e.chokedcommands
-    local crooked = ui_get(stack.crooked)
+    local choked_cmds, crooked = 
+        e.chokedcommands, 
+        ui_get(stack.crooked)
 
     local balance_adj = {
         lby = (stack.ubl ~= nil and ui_get(stack.ubl)) and "Opposite" or "Eye yaw",
@@ -407,7 +409,7 @@ client.set_event_callback("setup_command", function(e)
         [body_num] = inverted and -180 or 180,
 
         [yaw_jt] = ui_get(stack.yaw_jitter),
-        [yaw_jt_num] = ui_get(stack.yaw_jitter_val),
+        [yaw_jt_num] = inverted and ui_get(stack.yaw_jitter_val) or -ui_get(stack.yaw_jitter_val),
 
         [base] = state == "Manual" and "Local view" or ui_get(stack.base),
         [twist] = compare(crooked, script.crooked_type[1]),
@@ -441,14 +443,14 @@ end)
 
 client.set_event_callback("paint", function()
     menu_callback(true, true)
+    bind_system:update()
 
-    local me = entity_get_local_player()
+    local me = entity.is_alive(entity_get_local_player())
     
-    if not ui_get(active) or not ui_get(manual_aa) or not entity.is_alive(me) then
+    if not ui_get(active) or not ui_get(manual_aa) or not me then
         return
     end
 
-    bind_system:update()
     local w, h = client.screen_size()
     local r, g, b, a = ui_get(picker)
 
