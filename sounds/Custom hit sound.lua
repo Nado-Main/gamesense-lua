@@ -17,8 +17,8 @@ local sounds = {
     ["Fatality"] = "fatality.wav",
     ["Bubble"] = "bubble.wav",
     ["Hentai 1"] = "hentai1.wav",
-    ["Hentai 2"] = "hentai2.wav",
-    ["Hentai 3"] = "hentai3.wav",
+    ["Hentai 2"] = "hentai2.mp3",
+    ["Hentai 3"] = "hentai3.mp3",
     ["osu! combobreak"] = "combobreak.wav",
     ["PUBG Pan"] = "pubg_pan.mp3",
 }
