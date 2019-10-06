@@ -155,14 +155,14 @@ create_item("RAGE", "Other", "Anti-aim correction override", 1, "Resolver overri
 create_item("RAGE", "Other", "Double tap", 2)
 create_item("AA", "Other", "Slow motion", 2)
 create_item("AA", "Other", "On shot anti-aim", 2)
-create_item("AA", "Anti-aimbot angles", "Freestanding", 1)
 create_item("MISC", "Miscellaneous", "Z-Hop", 2)
 create_item("MISC", "Miscellaneous", "Pre-speed", 2)
 create_item("MISC", "Miscellaneous", "Blockbot", 2)
 create_item("MISC", "Miscellaneous", "Jump at edge", 2)
-create_item("MISC", "Miscellaneous", "Automatic grenade release", 2, "Grenade release")
-create_item("MISC", "Miscellaneous", "Ping spike", 2)
 create_item("MISC", "Miscellaneous", "Free look", 1)
+
+-- create_item("MISC", "Miscellaneous", "Ping spike", 2)
+create_item("MISC", "Miscellaneous", "Automatic grenade release", 2, "Grenade release")
 create_item("VISUALS", "Player ESP", "Activation type", 1, "Visuals")
 
 client.set_event_callback("paint", paint_handler)
