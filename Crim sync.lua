@@ -53,11 +53,7 @@ local fr_bodyyaw = ui.reference("AA", "Anti-aimbot angles", "Freestanding body y
 local fr, fr_hk = ui.reference("AA", "Anti-aimbot angles", "Freestanding")
 local slowmo, slowmo_key = ui.reference("AA", "Other", "Slow motion")
 
-local flag_active = ui.reference("AA", "Fake lag", "Enabled")
-local flag_limit = ui.reference("AA", "Fake lag", "Limit")
 local onshot, onshot_hk = ui.reference("AA", "Other", "On shot anti-aim")
-local dt, dt_hk = ui.reference("RAGE", "Other", "Double tap")
-local duck_assist = ui.reference("RAGE", "Other", "Duck peek assist")
 
 local menu_data = {
     ["Default"] = {
