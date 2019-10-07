@@ -7,11 +7,8 @@ local script = {
     yaw_base = { "Local view", "At targets", "Movement direction" },
     jitter_type = { "Off", "Offset", "Center", "Random" },
 
-    crooked_type = { "Twist", "Desync" },
-    crooked_stand_type = { "Twist", "Desync", "Anti balance adjust" },
-    desync_disablers = { "Fake duck", "Tickbase exploits" },
-
-    treshold = false,
+    crooked_type = { "Twist" },
+    crooked_stand_type = { "Twist", "Anti balance adjust" },
 }
 
 function script:call(func, name, ...)
@@ -123,11 +120,8 @@ local menu_data = {
 
         crooked = script:call(ui.new_multiselect, { "afa_manual_crooked", "Crooked" }, script.crooked_type),
     },
-
-    desync_disablers = script:call(ui.new_multiselect, { "afa_desync_disablers", "Crooked desync disablers" }, script.desync_disablers),
 }
 
-local cache = { }
 local ui_get, ui_set = ui.get, ui.set
 local entity_get_prop = entity.get_prop
 local entity_get_local_player = entity.get_local_player
@@ -150,28 +144,6 @@ local compare = function(tab, val)
     end
     
     return false
-end
-
-local cache_process = function(condition, should_call, a, b)
-    local name = tostring(condition)
-
-    cache[name] = cache[name] or ui_get(condition)
-
-    if should_call then
-        if type(a) == "function" then a() else
-            ui_set(condition, a)
-        end
-    else
-        if cache[name] ~= nil then
-            if b ~= nil and type(b) == "function" then
-                b(cache[name])
-            else
-                ui_set(condition, cache[name])
-            end
-
-            cache[name] = nil
-        end
-    end
 end
 
 local get_flags = function(cm)
@@ -272,8 +244,6 @@ local menu_callback = function(e, menu_call)
     ui_set(switch_hk, "Toggle")
 
     local setup_menu = function(list, current_condition, vis)
-        local ds_count = 0
-
         for k in pairs(list) do
             local mode = list[k]
             local active = k == current_condition
@@ -296,16 +266,10 @@ local menu_callback = function(e, menu_call)
                         end
                     end
 
-                    if compare(crooked, script.crooked_type[2]) then
-                        ds_count = ds_count + 1
-                    end
-
                     ui.set_visible(mode[j], active and vis and set_element)
                 end
             end
         end
-
-        ui.set_visible(list.desync_disablers, vis and ds_count > 0)
     end
 
     if e == nil then visible = true end
@@ -348,12 +312,6 @@ local menu_callback = function(e, menu_call)
 end
 
 client.set_event_callback("shutdown", menu_callback)
-client.set_event_callback("predict_command", function()
-    cache_process(flag_active, false)
-    cache_process(flag_limit, false)
-    cache_process(body, false)
-end)
-
 client.set_event_callback("setup_command", function(e)
     if not ui_get(active) then
         return
@@ -419,26 +377,6 @@ client.set_event_callback("setup_command", function(e)
 
         [fr_bodyyaw] = false,
     })
-
-    -- "Desync" feature
-    local disablers = ui_get(menu_data.desync_disablers)
-    local in_hexp = ui_get(onshot) and ui_get(onshot_hk) or ui_get(dt) and ui_get(dt_hk)
-
-    local in_fduck = compare(disablers, script.desync_disablers[1]) and ui_get(duck_assist)
-    local holding_exp = compare(disablers, script.desync_disablers[2]) and in_hexp
-    
-    local dsn_ot = compare(crooked, script.crooked_type[2])
-
-    if not dsn_ot or in_fduck or holding_exp then script.treshold = false else
-        if choked_cmds == 0 then
-            script.treshold = not script.treshold
-        end
-    end
-
-    local _scache = dsn_ot and script.treshold
-    cache_process(flag_active, _scache, false)
-    cache_process(flag_limit, _scache, 1)
-    cache_process(body, _scache, "Off")
 end)
 
 client.set_event_callback("paint", function()
@@ -475,5 +413,3 @@ bind_callback(menu_data, menu_callback, "crooked")
 ui.set_callback(active, menu_callback)
 ui.set_callback(manual_aa, menu_callback)
 ui.set_callback(condition, menu_callback)
-
-ui.set(menu_data.desync_disablers, script.desync_disablers)
