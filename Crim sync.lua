@@ -4,7 +4,7 @@ local script = {
     menu = { "AA", "Anti-aimbot angles" --[[ (Other) ]] },
     conditions = { "Default", "Running", "Slow motion", "Air", "Manual" },
 
-    yaw_base = { "Local view", "At targets", "Movement direction" },
+    yaw_base = { "Local view", "At targets" },
     jitter_type = { "Off", "Offset", "Center", "Random" },
 
     crooked_type = { "Twist" },
