@@ -1,19 +1,9 @@
-local renderer_line = renderer.line
-local renderer_text = renderer.text
-local measure_text = renderer.measure_text
-local renderer_gradient = renderer.gradient
-local renderer_rectangle = renderer.rectangle
-local client_screen_size = client.screen_size
-local globals_realtime = globals.realtime
-local math_floor = math.floor
-local math_sin = math.sin
-local ui_get = ui.get
-local ui_set = ui.set
+local ALPHA = 255
+local dragging = (function()local a={}local b,c,d,e,f,g,h,i,j,k,l,m,n,o;local p={__index={drag=function(self,...)local q,r=self:get()local s,t=a.drag(q,r,...)if q~=s or r~=t then self:set(s,t)end;return s,t end,set=function(self,q,r)local j,k=client.screen_size()ui.set(self.x_reference,q/j*self.res)ui.set(self.y_reference,r/k*self.res)end,get=function(self)local j,k=client.screen_size()return ui.get(self.x_reference)/self.res*j,ui.get(self.y_reference)/self.res*k end}}function a.new(u,v,w,x)x=x or 10000;local j,k=client.screen_size()local y=ui.new_slider("LUA","A",u.." window position",0,x,v/j*x)local z=ui.new_slider("LUA","A","\n"..u.." window position y",0,x,w/k*x)ui.set_visible(y,false)ui.set_visible(z,false)return setmetatable({name=u,x_reference=y,y_reference=z,res=x},p)end;function a.drag(q,r,A,B,C,D,E)if globals.framecount()~=b then c=ui.is_menu_open()f,g=d,e;d,e=ui.mouse_position()i=h;h=client.key_state(0x01)==true;m=l;l={}o=n;n=false;j,k=client.screen_size()end;if c and i~=nil then if(not i or o)and h and f>q and g>r and f<q+A and g<r+B then n=true;q,r=q+d-f,r+e-g;if not D then q=math.max(0,math.min(j-A,q))r=math.max(0,math.min(k-B,r))end end end;table.insert(l,{q,r,A,B})return q,r,A,B end;return a end)()
 
 local active = ui.new_checkbox("VISUALS", "Other ESP", "Hotkey list")
-local x_axis, y_axis =
-    ui.new_slider("VISUALS", "Other ESP", "Hotkey list position (x/y)\n hlist_posx", 195, 8192, 350, true, "px"),
-    ui.new_slider("VISUALS", "Other ESP", "\n hlist_posy", 4, 8192, 4, true, "px")
+local color_picker = ui.new_color_picker("VISUALS", "Other ESP", "Hotkey list color picker", 89, 119, 239)
+local hotkeys_dragging = dragging.new("Hotkeys", 100, 200)
 
 local references = { }
 local hotkey_id = {
@@ -49,63 +39,29 @@ local function create_item(tab, container, name, arg, cname)
     references[cname or name] = collected
 end
 
-local function renderer_container(x, y, w, h)
-    local realtime = globals_realtime()
-    local c = { 10, 60, 40, 40, 40, 60, 20 }
-
-    local outline_set = function(x, y, w, h, r, g, b, a)
-        renderer_line(x, y, x + w, y, r, g, b, a)
-        renderer_line(x, y, x, y + h, r, g, b, a)
-        renderer_line(x, y + h, x + w, y + h, r, g, b, a)
-        renderer_line(x+w, y + h, x + w, y, r, g, b, a)
-    end
-
-    local color = {
-        math_floor(math_sin(realtime * 2) * 127 + 128),
-        math_floor(math_sin(realtime * 2 + 2) * 127 + 128),
-        math_floor(math_sin(realtime * 2 + 4) * 127 + 128)
-    }
-
-    for i = 1, #c do
-        outline_set(x+i, y+i, w-(i*2), h-(i*2), c[i], c[i], c[i], 200)
-    end
-
-    renderer_rectangle( x + 6, y + 6, w - 12, h - 12, 25, 25, 25, 245)
-    renderer_gradient(x + 10, y + 17, w - 20, 2, color[1], color[2], color[3], 255, color[3], color[2], color[1], 200, true)
-    renderer_rectangle(x + 10, y + 20, w - 20, h - 30, 20,20, 20, 245)
-
-    outline_set(x + 10, y + 20, w - 20, h - 30, 40, 40, 40, 245)
-end
-
-local function ui_callback()
-    local visible = ui_get(active)
-    ui.set_visible(x_axis, visible)
-    ui.set_visible(y_axis, visible)
-end
-
 local function paint_handler()
-    if not ui_get(active) then
+    if not ui.get(active) then
         return
     end
 
     local m_items = { }
-    local x_offset, y_offset = 0, 24
+    local x_offset, y_offset = 0, 26
 
     for ref in pairs(references) do
         local current_ref = references[ref]
         local count = item_count(current_ref)
 
         local active = true
-        local state = { ui_get(current_ref[count]) }
+        local state = { ui.get(current_ref[count]) }
 
         if count > 1 then
-            active = ui_get(current_ref[1])
+            active = ui.get(current_ref[1])
         end
 
         if active and state[2] ~= 0 and (state[2] == 3 and not state[1] or state[2] ~= 3 and state[1]) then
             m_items[ref] = hotkey_id[state[2]]
 
-            local ms = measure_text(nil, ref)
+            local ms = renderer.measure_text(nil, ref)
 
             if ms > x_offset then
                 x_offset = ms
@@ -125,26 +81,28 @@ local function paint_handler()
     end
 
     -- do stuff
-    local screen_size = { client_screen_size() }
-    
-    local xp_a, yp_a = ui_get(x_axis), ui_get(y_axis)
-    if xp_a > screen_size[1] then ui_set(x_axis, screen_size[1]); xp_a = screen_size[1] end
-    if yp_a > screen_size[2] - 20 then ui_set(y_axis, screen_size[2]-20); yp_a = screen_size[2]-20 end
+    local x, y = hotkeys_dragging:get()
+    local w, h = 75 + x_offset, 11 + (15*item_count(m_items))
 
-    local x, y = xp_a - 5, yp_a
-    local w, h = 100 + x_offset, 36 + (15*item_count(m_items))
+    local r, g, b, a = ui.get(color_picker)
+    local a = ALPHA > a and a or ALPHA
 
-    renderer_container(x - w, y, w, h)
-    renderer_text(x - w + w / 2, y + 12, 255, 255, 255, 255, "c-", 0, string.upper("h o t k e y s"))
+    renderer.rectangle(x, y, w, 20, 0, 0, 0, a)
+    renderer.text(x+5, y+3, 255, 255, 255, 255, "", 0, "Hotkeys")
+
+    renderer.rectangle(x, y + 19, w, 2, r, g, b, ALPHA)
+    renderer.rectangle(x, y + 20, w, h, 17, 17, 17, a)
 
     for key, val in pairs(m_items) do
         local key_type = "[" .. val .. "]"
 
-        renderer_text(x - w + 15, y + y_offset, 255, 255, 255, 255, "", 0, key)
-        renderer_text(x - measure_text(nil, key_type) - 15, y + y_offset, 255, 255, 255, 255, "", 0, key_type)
+        renderer.text(x + 5, y + y_offset, 255, 255, 255, 255, "", 0, key)
+        renderer.text(x + w - renderer.measure_text(nil, key_type) - 5, y + y_offset, 255, 255, 255, 255, "", 0, key_type)
 
         y_offset = y_offset + 15
     end
+
+    hotkeys_dragging:drag(w, h*2)
 end
 
 -- Creating menu items
@@ -166,6 +124,3 @@ create_item("MISC", "Miscellaneous", "Automatic grenade release", 2, "Grenade re
 create_item("VISUALS", "Player ESP", "Activation type", 1, "Visuals")
 
 client.set_event_callback("paint", paint_handler)
-
-ui.set_callback(active, ui_callback)
-ui_callback()
