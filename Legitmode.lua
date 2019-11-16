@@ -1,46 +1,53 @@
-local vector = function(x, y, z)
-    x = x ~= nil and x or 0
-    y = y ~= nil and y or 0
-    z = z ~= nil and z or 0
+local math_atan2 = math.atan2
+local math_sqrt = math.sqrt
+local math_abs = math.abs
+local math_floor = math.floor
+local math_cos = math.cos
+local math_sin = math.sin
 
-    return {
-        ["x"] = x,
-        ["y"] = y,
-        ["z"] = z
-    }
-end
+local entity_get_players = entity.get_players
+local client_trace_line = client.trace_line
+local client_eye_position = client.eye_position
+local client_camera_angles = client.camera_angles
 
-local vector_add = function(vector1, vector2)
-    return { 
-        ["x"] = vector1.x + vector2.x, 
-        ["y"] = vector1.y + vector2.y, 
-        ["z"] = vector1.z + vector2.z
-    }
-end
+local entity_is_alive = entity.is_alive
+local entity_hitbox_position = entity.hitbox_position
+local renderer_world_to_screen = renderer.world_to_screen
+local renderer_measure_text = renderer.measure_text
+local renderer_indicator = renderer.indicator
+local renderer_rectangle = renderer.rectangle
+local renderer_gradient = renderer.gradient
+local renderer_text = renderer.text
 
-local vector_substract = function(vector1, vector2)
-    return { 
-        ["x"] = vector1.x - vector2.x, 
-        ["y"] = vector1.y - vector2.y, 
-        ["z"] = vector1.z - vector2.z
-    }
-end
+local math_max = math.max
+local math_min = math.min
 
-local rad2deg = function(rad) return (rad * 180 / math.pi) end
-local deg2rad = function(deg) return (deg * math.pi / 180) end
+local ui_get, ui_set = ui.get, ui.set
+local get_local = entity.get_local_player
+local get_prop = entity.get_prop
 
-local trace_line = function(entity, start, _end)
-    return client.trace_line(entity, start.x, start.y, start.z, _end.x, _end.y, _end.z)
-end
+local ffi = require "ffi"
 
-local world_to_screen = function(x, y, z, func)
-    local x, y = renderer.world_to_screen(x, y, z)
-    if x ~= nil and y ~= nil then 
-        func(x, y)
-    end
-end
+ffi.cdef[[
+    typedef void*(__thiscall* lm_get_client_entity_t)(void*, int);
+    typedef bool(__thiscall* through_smoke)(float, float, float, float, float, float, short);
+]]
 
-local clamp_angles = function(angle)
+-- Line goes through smoke
+-- Credits: rave1338
+
+local lgts_sig = "\x55\x8B\xEC\x83\xEC\x08\x8B\x15\xCC\xCC\xCC\xCC\x0F\x57"
+local lgts_signature = client.find_signature("client_panorama.dll", lgts_sig)
+local raw_ent_list = client.create_interface("client_panorama.dll", "VClientEntityList003")
+local ent_list = ffi.cast(ffi.typeof("void***"), raw_ent_list)
+
+local get_client_entity = ffi.cast("lm_get_client_entity_t", ent_list[0][3])
+local lgts_function = ffi.cast("through_smoke", lgts_signature)
+
+local function vector(_x, _y, _z) return { x = _x or 0, y = _y or 0, z = _z or 0 } end
+local function rad2deg(rad) return (rad * 180 / math.pi) end
+
+local function clamp_angles(angle)
     angle = angle % 360 
     angle = (angle + 360) % 360
 
@@ -49,61 +56,6 @@ local clamp_angles = function(angle)
     end
 
     return angle
-end
-
-local get_atan = function(ent, eye_pos, camera)
-    local data = { id = nil, dst = 2147483647 }
-
-    for i = 0, 19 do
-        local hitbox = vector(entity.hitbox_position(ent, i))
-        local ext = vector_substract(hitbox, eye_pos)
-
-        local yaw = rad2deg(math.atan2(ext.y, ext.x))
-        local pitch = -rad2deg(math.atan2(ext.z, math.sqrt(ext.x^2 + ext.y^2)))
-    
-        local yaw_dif = math.abs(camera.y % 360 - yaw % 360) % 360
-        local pitch_dif = math.abs(camera.x - pitch) % 360
-            
-        if yaw_dif > 180 then 
-            yaw_dif = 360 - yaw_dif
-        end
-
-        local dst = math.sqrt(yaw_dif^2 + pitch_dif^2)
-
-        if dst < data.dst then
-            data.dst = dst
-            data.id = i
-        end
-    end
-
-    return data.id, data.dst
-end
-
-local function get_nearbox(z_pos)
-    local get_players = entity.get_players(true)
-    local closest = { enemy = nil, hitbox = nil, dst = 2147483647 }
-    
-    if #get_players == 0 then
-        return
-    end
-
-    local eye_pos = vector(client.eye_position())
-    local camera = vector(client.camera_angles())
-
-    camera.z = z_pos ~= nil and 64 or camera.z
-
-    for i = 1, #get_players do
-        local hitbox_id, distance = 
-            get_atan(get_players[i], eye_pos, camera)
-
-        if distance < closest.dst then
-            closest.dst = distance
-            closest.hitbox = hitbox_id
-            closest.enemy = get_players[i]
-        end
-    end
-
-    return closest.enemy, closest.hitbox, closest.dst
 end
 
 local contains = function(tab, val, sys)
@@ -130,13 +82,9 @@ end
 
 local ui_mset = function(list)
     for ref, val in pairs(list) do
-        ui.set(ref, val)
+        ui_set(ref, val)
     end
 end
-
-local ui_get, ui_set = ui.get, ui.set
-local get_local = entity.get_local_player
-local get_prop = entity.get_prop
 
 local var_direction = {
     "Safe",
@@ -180,12 +128,17 @@ local limit = ui.reference("AA", "Anti-aimbot angles", "Fake yaw limit")
 local twist = ui.reference("AA", "Anti-aimbot angles", "Twist")
 local lby = ui.reference("AA", "Anti-aimbot angles", "Lower body yaw target")
 
+local playerlist = ui.reference("PLAYERS", "Players", "Player list")
+local whitelist = ui.reference("PLAYERS", "Adjustments", "Add to whitelist")
+local reset_all = ui.reference("PLAYERS", "Players", "Reset all")
+
 local menu = {
     enabled = ui.new_checkbox("RAGE", "Other", "Rage aimbot assistance"),
 
     ov_autowall = ui.new_checkbox("RAGE", "Other", "Override automatic penetration"),
     ov_autowall_key = ui.new_hotkey("RAGE", "Other", "Override penetration key", true),
 
+    smoke_check = ui.new_checkbox("RAGE", "Other", "Aim throught smoke"),
     nearest = ui.new_multiselect("RAGE", "Other", "Nearest hitboxes", names),
 
     legit_aa = ui.new_checkbox("RAGE", "Other", "Legit anti-aim"),
@@ -205,6 +158,7 @@ local function set_visible()
     ui.set_visible(menu.ov_autowall, active)
     ui.set_visible(menu.ov_autowall_key, active)
 
+    ui.set_visible(menu.smoke_check, active)
     ui.set_visible(menu.nearest, active)
 
     ui.set_visible(menu.legit_aa, active)
@@ -217,9 +171,110 @@ local function set_visible()
     ui.set_visible(menu.edge_picker, active and legit_aa)
 end
 
-local function do_legit_aa(local_player)
-    if not local_player or not entity.is_alive(local_player) then
+local function get_atan(ent, eye_pos, camera)
+    local data = { id = nil, dst = 2147483647 }
+
+    local vector_substract = function(vector1, vector2)
+        return { 
+            x = vector1.x - vector2.x, 
+            y = vector1.y - vector2.y, 
+            z = vector1.z - vector2.z
+        }
+    end
+
+    for i = 0, 19 do
+        local hitbox = vector(entity_hitbox_position(ent, i))
+        local ext = vector_substract(hitbox, eye_pos)
+
+        local yaw = rad2deg(math_atan2(ext.y, ext.x))
+        local pitch = -rad2deg(math_atan2(ext.z, math_sqrt(ext.x^2 + ext.y^2)))
+    
+        local yaw_dif = math_abs(camera.y % 360 - yaw % 360) % 360
+        local pitch_dif = math_abs(camera.x - pitch) % 360
+            
+        if yaw_dif > 180 then 
+            yaw_dif = 360 - yaw_dif
+        end
+
+        local dst = math_sqrt(yaw_dif^2 + pitch_dif^2)
+
+        if dst < data.dst then
+            data.dst = dst
+            data.id = i
+        end
+    end
+
+    return data.id, data.dst
+end
+
+local function get_nearbox(z_pos)
+    client.update_player_list()
+
+    local plist_bk = ui_get(playerlist)
+    local get_players = entity_get_players(true)
+    local closest = { enemy = nil, hitbox = nil, dst = 2147483647 }
+    
+    if #get_players == 0 then
         return
+    end
+
+    local smoke_check = not ui_get(menu.smoke_check)
+    local eye_pos = vector(client_eye_position())
+    local camera = vector(client_camera_angles())
+
+    camera.z = z_pos ~= nil and 64 or camera.z
+
+    local local_head = { entity_hitbox_position(get_local(), 0) }
+
+    for i = 1, #get_players do
+        local can_select = true
+        local hitbox_id, distance = 
+            get_atan(get_players[i], eye_pos, camera)
+
+        if distance < closest.dst then
+            if smoke_check then
+                local hitbox = { entity_hitbox_position(get_players[i], hitbox_id) }
+
+                if hitbox[1] ~= nil then
+                    can_select = not lgts_function(local_head[1], local_head[2], local_head[3], hitbox[1], hitbox[2], hitbox[3], 1)
+                end
+            end
+
+            ui_set(playerlist, get_players[i])
+            ui_set(whitelist, not can_select)
+
+            if can_select then
+                closest = {
+                    dst = distance,
+                    hitbox = hitbox_id,
+                    enemy = get_players[i]
+                }
+            end
+        end
+    end
+
+    if plist_bk ~= nil then
+        ui_set(playerlist, plist_bk)
+    end
+
+    return closest.enemy, closest.hitbox, closest.dst
+end
+
+local function do_legit_aa(local_player)
+    if not entity_is_alive(local_player) then
+        return
+    end
+
+    local vector_add = function(vector1, vector2)
+        return { 
+            x = vector1.x + vector2.x, 
+            y = vector1.y + vector2.y, 
+            z = vector1.z + vector2.z
+        }
+    end
+
+    local trace_line = function(entity, start, _end)
+        return client_trace_line(entity, start.x, start.y, start.z, _end.x, _end.y, _end.z)
     end
 
     local m_vecOrigin = vector(get_prop(local_player, "m_vecOrigin"))
@@ -230,8 +285,8 @@ local function do_legit_aa(local_player)
     local radius = 20 + ui_get(menu.edge_distance) + 0.1
     local step = math.pi * 2.0 / edge_count[ui_get(menu.edge_factor)]
 
-    local camera = vector(client.camera_angles())
-    local central = deg2rad(math.floor(camera.y + 0.5))
+    local camera = vector(client_camera_angles())
+    local central = math_floor(camera.y + 0.5) * math.pi / 180
 
     local data = {
         fraction = 1,
@@ -247,39 +302,46 @@ local function do_legit_aa(local_player)
         end
 
         local clm = clamp_angles(central - rad2deg(a))
-        local abs = math.abs(clm)
+        local abs = math_abs(clm)
 
         if abs < 90 and abs > 1 then
             local side = "LAST KNOWN"
             local location = vector(
-                radius * math.cos(a) + m_vecOrigin.x, 
-                radius * math.sin(a) + m_vecOrigin.y, 
+                radius * math_cos(a) + m_vecOrigin.x, 
+                radius * math_sin(a) + m_vecOrigin.y, 
                 m_vecOrigin.z
             )
 
             local _fr, entindex = trace_line(local_player, m_vecOrigin, location)
 
-            if math.floor(clm + 0.5) < -21 then side = "LEFT" end
-            if math.floor(clm + 0.5) > 21 then side = "RIGHT" end
+            if math_floor(clm + 0.5) < -21 then side = "LEFT" end
+            if math_floor(clm + 0.5) > 21 then side = "RIGHT" end
 
             local fr_info = {
                 fraction = _fr,
                 surpassed = (_fr < 1),
                 angle = vector(0, clamp_angles(rad2deg(a)), 0),
-                var = math.floor(clm + 0.5),
+                var = math_floor(clm + 0.5),
                 side = side --[ 0 - center / 1 - left / 2 - right ]
             }
 
             if data.fraction > _fr then data = fr_info end
 
             if ui_get(menu.draw_edges) then
+                local world_to_screen = function(x, y, z, func)
+                    local x, y = renderer_world_to_screen(x, y, z)
+                    if x ~= nil and y ~= nil then 
+                        func(x, y)
+                    end
+                end
+
                 world_to_screen(location.x, location.y, location.z - m_vecViewOffset.z, function(x, y)
                     local r, g, b = 255, 255, 255
                     if fr_info.surpassed then
                         r, g, b = ui_get(menu.edge_picker)
                     end
 
-                    renderer.text(x, y, r, g, b, 255, "c", 0, "•")
+                    renderer_text(x, y, r, g, b, 255, "c", 0, "•")
                 end)
             end
         end
@@ -339,8 +401,8 @@ client.set_event_callback("setup_command", function(cmd)
         [rage_hitbox] = contains(ui_get(menu.nearest), hitbox) and hitbox or ui_get(rage_hitbox),
 
         [maximum_fov] = fov > 10 and 10 or fov,
-        [rage_recoil] = false,
-        [aimstep] = false,
+        [rage_recoil] = not in_legit,
+        -- [aimstep] = false,
         [psilent] = false,
         [autofire] = true
     })
@@ -365,11 +427,6 @@ client.set_event_callback("paint", function()
     if not ui_get(menu.enabled) or not ui_get(menu.legit_aa) or not local_player then
         return
     end
-
-    -- cache_process("antiaim_pitch", pitch, aim_active, "Off")
-    -- cache_process("antiaim_yaw", yaw, aim_active, "Off")
-    -- cache_process("antiaim_byaw", body, aim_active, "Off")
-    -- cache_process("antiaim_lbyt", lby, aim_active, "Off")
 
     local data = do_legit_aa(local_player)
 
@@ -399,49 +456,55 @@ client.set_event_callback("paint", function()
         end
     end
 
-    -- calculations
-    local clamp = function(int, min, max)
-        local vl = int
-
-        vl = vl < min and min or vl
-        vl = vl > max and max or vl
-
-        return vl
+    local normalize_yaw = function(angle)
+        angle = (angle % 360 + 360) % 360
+        return angle > 180 and angle - 360 or angle
     end
 
-    local vl = { get_prop(local_player, "m_vecVelocity") }
-    local vl_sqrt = math.sqrt(vl[1]*vl[1] + vl[2]*vl[2])
-    local vl_actual = math.floor(math.min(10000, vl_sqrt + 0.5))
+    local num_round = function(x, n)
+        n = math.pow(10, n or 0); x = x * n
+        x = x >= 0 and math.floor(x + 0.5) or math.ceil(x - 0.5)
+        return x / n
+    end
 
-    local by = ui_get(body_num) 
-    local max_dsn = clamp(59 - 58 * vl_actual / 580, 0, 60)
-    local byaw_value = clamp(by, by < 0 and -60 or 0, by > 0 and 60 or 0)
-    local end_byaw = clamp(byaw_value, by < 0 and -max_dsn or 0, by > 0 and max_dsn or 0)
+    local r, g, b, a = 124, 195, 13, (not aim_active and 255 or 0)
 
-    -- indication
-    local i = 0.5
     local text = "AA"
-    local percent = 1
+    local rtext_c = 1
 
-    local width, height = renderer.measure_text("+", text)
-    local y = renderer.indicator(255, 255, 255, 150, text)
+    local w, h = renderer_measure_text("+", text)
+    local y = renderer_indicator(255, 255, 255, 150, text) + 23
 
-    local state = aim_active and "DISABLED" or data.side
-    local end_width = ((width / 2 - 2) / 60) * end_byaw
+    local bar_x, bar_y, bar_w, bar_h = 10, y+2, w, 5
 
-    renderer.rectangle(10, y + 27, width, 5, 0, 0, 0, not aim_active and 150 or 0)
+    local _, camera_yaw = client_camera_angles()
+    local _, rot_yaw = entity.get_prop(local_player, "m_angAbsRotation")
+    local body_pos = entity.get_prop(local_player, "m_flPoseParameter", 11) or 0
 
-    if end_byaw > 0 then
-        renderer.rectangle(11 + width / 2, y + 28, end_width, 3, 124, 195, 13, not aim_active and 255 or 0)
-        renderer.text(11 + width / 2 + end_width, y + 24, 255, 255, 255, not aim_active and 255 or 0, "-", nil, ">")
-    else
-        end_width = 15 - (end_width * -1)
-        end_width = end_width > 15 and 15 or end_width
+    local body_yaw = math_max(-60, math_min(60, num_round(body_pos*120-60+0.5, 1)))
+    local percentage = (math_max(-60, math_min(60, body_yaw*1.06))+60) / 120
 
-        renderer.rectangle(10 + end_width, y + 28, width / 2 - end_width, 3, 124, 195, 13, not aim_active and 255 or 0)
-        renderer.text(10 + end_width, y + 24, 255, 255, 255, not aim_active and 255 or 0, "-", nil, "<")
+    if camera_yaw ~= nil and rot_yaw ~= nil and 60 < math_abs(normalize_yaw(camera_yaw-(rot_yaw+body_yaw))) then
+        percentage = 1-percentage
     end
 
-    renderer.text(width + 17, y + (10  * i), 255, 255, 255, 255, "-", nil, "MAX DSN: " .. (aim_active and "0" or math.abs(end_byaw)) .. "°"); i = i + 1;
-    renderer.text(width + 17, y + (10 * i), 255, 255, 255, 255, "-", nil, "DIR: " .. (aim_active and "EYE YAW" or data.side)); i = i + 1;
+    local center = math_floor(bar_w/2+0.5)
+    local start = math_floor(bar_w*percentage)
+
+    renderer_rectangle(bar_x, bar_y, bar_w, bar_h, 0, 0, 0, 150)
+
+    if percentage > 0.5 then
+        renderer_rectangle(bar_x+center+1, bar_y+1, bar_w*(percentage-0.5)-2, bar_h-2, r, g, b, 255)
+    else
+        renderer_rectangle(bar_x+1+start, bar_y+1, center-start, bar_h-2, r, g, b, 255)
+    end
+
+    renderer_gradient(bar_x+center, bar_y+1, 1, bar_h-2, 255, 255, 255, a, 140, 140, 140, a, false)
+
+    if math_max(-60, math_min(60, math_floor(body_pos*120-60+0.5))) ~= 0 then
+        renderer_text(math_max(bar_x, math_min(bar_x+bar_w, bar_x+bar_w*percentage)), y+4, 255, 255, 255, 255, "c-", 0, percentage > 0.5 and ">" or "<")
+    end
+
+    renderer_text(w + 17, y - 27 + (9  * rtext_c), 255, 255, 255, 255, "-", nil, "MAX DSN: " .. body_yaw .. "°"); rtext_c = rtext_c + 1;
+    renderer_text(w + 17, y - 27 + (9 * rtext_c), 255, 255, 255, 255, "-", nil, "DIR: " .. (aim_active and "EYE YAW" or data.side)); rtext_c = rtext_c + 1;
 end)
