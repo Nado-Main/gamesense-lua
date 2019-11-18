@@ -401,7 +401,7 @@ client.set_event_callback("setup_command", function(cmd)
         [rage_hitbox] = contains(ui_get(menu.nearest), hitbox) and hitbox or ui_get(rage_hitbox),
 
         [maximum_fov] = fov > 10 and 10 or fov,
-        [rage_recoil] = not in_legit,
+        [rage_recoil] = false,
         -- [aimstep] = false,
         [psilent] = false,
         [autofire] = true
