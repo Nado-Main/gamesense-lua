@@ -11,15 +11,11 @@ local function setup_materials(list)
     return models
 end
 
-local function set_flags(material, flags, enabled)
-    material:set_material_var_flag(flags, enabled)
-end
-
-local function ticks_time(tick)
-    return (globals.tickinterval() * tick)
-end
-
 local function setup_var(data, in_call)
+    local ticks_time = function(tick)
+        return (globals.tickinterval() * tick)
+    end
+
     if not in_call then
         ui.set(data.reference, data.on_call)
         client.delay_call(ticks_time(data.time), setup_var, data, true)
@@ -54,8 +50,11 @@ local function find_across(tab, in_a, key)
             return tab[i]
         end
     end
+
+    return nil
 end
 
+local smokes = 0
 local models = {
     "particle/vistasmokev1/vistasmokev1",
     "particle/vistasmokev1/vistasmokev1_smokegrenade",
@@ -64,51 +63,57 @@ local models = {
     "particle/vistasmokev1/vistasmokev1_fire"
 }
 
-local smokes = 0
-local combolist = { "Off", "Removal", "Wireframe" }
-
+local post_data = { "Off", "Wireframe", "Circle" }
 local ref = ui.reference("VISUALS", "Effects", "Remove smoke grenades")
-local grenade_effect = ui.new_combobox("VISUALS", "Effects", "Smoke grenade effect", combolist)
 
-ui.set_visible(ref, false)
+local grenade_effect = ui.new_combobox("VISUALS", "Effects", "Smoke effect", post_data)
 
-client.set_event_callback("net_update_end", function()
-    local selection = ui.get(grenade_effect)
+local net_update = function(force_disable)
+    local active = force_disable and "Off" or ui.get(grenade_effect)
 
+    local smoke_count = setup_smokeinfo()
     local materials = setup_materials(models)
+
     local smoke_fire = find_across(materials, "name", "particle/vistasmokev1/vistasmokev1_fire")
 
-    local is_removal, is_wireframe = 
-        selection == combolist[2],
-        selection == combolist[3]
+    if smoke_count ~= smokes then
+        smokes = smoke_count
 
-    if selection ~= combolist[3] then
-        ui.set(ref, is_removal and true or false)
-    else
-        local smoke_count = setup_smokeinfo()
-
-        if smoke_count ~= smokes then
-            smokes = smoke_count
+        if active ~= post_data[1] then
             setup_var({
-                reference = ref,
-                time = 7,
-
-                on_call = true,
-                end_call = false
+                reference = ref, time = 7,
+                on_call = true, end_call = false
             })
         end
     end
 
-    local is_both = is_removal or is_wireframe
+    local n_data = active ~= "Off"
+    local circle = active == post_data[3]
 
-    for i=1, #materials do
-        set_flags(materials[i].data, 28, is_wireframe)
-        set_flags(materials[i].data, 3, is_both)
+    for k, v in pairs(materials) do
+        local old_val = n_data
+
+        if v.name == models[5] and circle then
+            n_data = false
+        end
+
+        v.data:set_material_var_flag(28, n_data)
+        v.data:set_material_var_flag(3, n_data)
+        v.data:set_material_var_flag(2, n_data and circle)
+
+        n_data = old_val
     end
 
-    set_flags(smoke_fire.data, 2, is_both)
-end)
+    if smoke_fire ~= nil then
+        smoke_fire.data:set_material_var_flag(2, n_data and active ~= post_data[3])
+    end
+end
 
+client.set_event_callback("net_update_end", net_update)
 client.set_event_callback("shutdown", function()
-    ui.set_visible(ref, true)
+    net_update(true)
+
+    if ui.get(grenade_effect) ~= post_data[1] then
+        ui.set(ref, true)
+    end
 end)
