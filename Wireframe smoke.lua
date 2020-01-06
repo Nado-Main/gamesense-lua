@@ -68,12 +68,11 @@ local ref = ui.reference("VISUALS", "Effects", "Remove smoke grenades")
 
 local grenade_effect = ui.new_combobox("VISUALS", "Effects", "Smoke effect", post_data)
 
+local materials = setup_materials(models)
 local net_update = function(force_disable)
     local active = force_disable and "Off" or ui.get(grenade_effect)
 
     local smoke_count = setup_smokeinfo()
-    local materials = setup_materials(models)
-
     local smoke_fire = find_across(materials, "name", "particle/vistasmokev1/vistasmokev1_fire")
 
     if smoke_count ~= smokes then
