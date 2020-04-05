@@ -16,6 +16,9 @@ local sounds = {
     ["Aimware"] = "cod.wav",
     ["Fatality"] = "fatality.wav",
     ["Bubble"] = "bubble.wav",
+    ["Bell"] = "bell.wav",
+    ["Bonk"] = "bonk.mp3",
+    ["Stony"] = "stony.wav",
     ["Hentai 1"] = "hentai1.wav",
     ["Hentai 2"] = "hentai2.mp3",
     ["Hentai 3"] = "hentai3.mp3",
@@ -40,7 +43,6 @@ end
 
 local enabled_ref = ui.new_checkbox("VISUALS", "Player ESP", "Override hit marker sound")
 local sound_ref = ui.new_combobox("VISUALS", "Player ESP", "\n hitsound_override", sound_names)
-local sound_vol = ui.new_slider("VISUALS", "Player ESP", "Volume multiplier \n hitsound_vol_multiplier", 1, 50, 10, true, "x", 0.1)
 
 client.set_event_callback("player_hurt", function(e)
     if not ui_get(enabled_ref) or e.attacker == nil then 
@@ -52,29 +54,9 @@ client.set_event_callback("player_hurt", function(e)
     local userid = client.userid_to_entindex(e.userid)
     local attacker = client.userid_to_entindex(e.attacker)
 
-    local vol = ui.get(sound_vol) / 10
-
     for k, v in pairs(sounds) do
         if attacker == me and userid ~= me and k == ui_get(sound_ref) and sound_exists(v) then
-            local command = "playvol " .. v .. " "
-
-            if vol <= 1 then
-                client.exec(command .. vol)
-            else
-                local m_vol = math.floor(vol + 0.9)
-
-                for i=1, m_vol do
-                    local volume = 1
-
-                    if m_vol ~= vol and i==m_vol then
-                        volume = vol-math.floor(vol)
-                    end
-
-                    client.exec(command .. volume)
-                end
-            end
-
-            return
+            return client.exec("play " .. v)
         end
     end
 end)
