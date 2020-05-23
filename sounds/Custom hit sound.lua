@@ -55,8 +55,8 @@ client.set_event_callback("player_hurt", function(e)
     local attacker = client.userid_to_entindex(e.attacker)
 
     for k, v in pairs(sounds) do
-        if attacker == me and userid ~= me and k == ui_get(sound_ref) and sound_exists(v) then
-            return client.exec("play " .. v)
+        if attacker == me and userid ~= me and k == ui_get(sound_ref) then
+            return cvar.play:invoke_callback(v)
         end
     end
 end)
